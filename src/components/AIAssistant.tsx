@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, Sparkles, User, Bot, Settings, Save, History, Plus, Trash2, MessageCircle } from 'lucide-react';
 import { useScheduleStore } from '../store/useScheduleStore';
 import { useChatStore, type Message } from '../store/useChatStore';
-import { askAI, type AIResponse } from '../utils/aiService';
-import clsx from 'clsx';
+import { askAI } from '../utils/aiService';
 
 export const AIAssistant: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
