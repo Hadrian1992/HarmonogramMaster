@@ -71,9 +71,17 @@ function App() {
       const response = await fetch(`${serverUrl}/api/data`);
       if (!response.ok) throw new Error('Błąd pobierania z serwera');
 
-      // TODO: Implement full restore functionality in store
-      // const data = await response.json();
-      // useScheduleStore.getState().restoreSchedule(data.schedule);
+      const data = await response.json();
+
+      // Restore schedule if exists
+      if (data.schedule) {
+        useScheduleStore.getState().restoreSchedule(data.schedule);
+      }
+
+      // Restore chat sessions if exist
+      if (data.chatSessions && Array.isArray(data.chatSessions)) {
+        useChatStore.getState().restoreSessions(data.chatSessions);
+      }
 
       setSyncStatus('success');
       setSyncMessage('✓ Dane wczytane z serwera!');

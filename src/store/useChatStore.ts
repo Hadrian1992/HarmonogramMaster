@@ -24,6 +24,7 @@ interface ChatState {
     selectSession: (id: string) => void;
     addMessage: (sessionId: string, message: Message) => void;
     updateSessionTitle: (sessionId: string, title: string) => void;
+    restoreSessions: (sessions: ChatSession[]) => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -92,6 +93,13 @@ export const useChatStore = create<ChatState>()(
                     sessions: state.sessions.map(s =>
                         s.id === sessionId ? { ...s, title } : s
                     )
+                }));
+            },
+
+            restoreSessions: (sessions) => {
+                set(() => ({
+                    sessions,
+                    currentSessionId: sessions[0]?.id || null
                 }));
             }
         }),

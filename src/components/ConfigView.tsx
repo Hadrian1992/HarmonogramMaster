@@ -81,17 +81,31 @@ export const ConfigView: React.FC = () => {
 
             const data = await response.json();
 
-            // Here we would call store actions to restore data
-            // useScheduleStore.getState().restoreSchedule(data.schedule);
-            // useChatStore.getState().restoreSessions(data.chatSessions);
+            // Restore schedule
+            if (data.schedule) {
+                useScheduleStore.getState().restoreSchedule(data.schedule);
+            }
 
+            // Restore chat sessions
+            if (data.chatSessions && Array.isArray(data.chatSessions)) {
+                useChatStore.getState().restoreSessions(data.chatSessions);
+            }
+
+            // Restore settings
             if (data.settings) {
                 if (data.settings.apiKey) setApiKey(data.settings.apiKey);
                 if (data.settings.model) setModel(data.settings.model);
+                if (data.settings.staffingRules) {
+                    const rules = data.settings.staffingRules;
+                    if (rules.minStaffMorning !== undefined) setMinStaffMorning(rules.minStaffMorning);
+                    if (rules.minStaffEvening !== undefined) setMinStaffEvening(rules.minStaffEvening);
+                    if (rules.minStaffNight !== undefined) setMinStaffNight(rules.minStaffNight);
+                    if (rules.customRules) setCustomRules(rules.customRules);
+                }
             }
 
             setSyncStatus('success');
-            setSyncMessage('Dane pomyślnie pobrane z serwera! (Symulacja - wdrożenie wkrótce)');
+            setSyncMessage('Dane pomyślnie pobrane z serwera!');
         } catch (error) {
             console.error(error);
             setSyncStatus('error');

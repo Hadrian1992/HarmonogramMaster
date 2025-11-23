@@ -1,8 +1,8 @@
 {
   "schedule": {
     "id": "default",
-    "month": 12,
-    "year": 2025,
+    "month": 1,
+    "year": 2026,
     "employees": [
       {
         "id": "1",
@@ -65,10 +65,12 @@
             "hours": 0
           },
           "2026-01-06": {
-            "id": "mvhl030wy",
+            "id": "mobbby50d",
             "date": "2026-01-06",
-            "type": "W",
-            "hours": 0
+            "type": "WORK",
+            "startHour": 20,
+            "endHour": 8,
+            "hours": 12
           },
           "2026-01-07": {
             "id": "nq83kmfbc",
@@ -745,6 +747,14 @@
             "startHour": 8,
             "endHour": 16,
             "hours": 8
+          },
+          "2026-01-09": {
+            "id": "bcybx4jr8",
+            "date": "2026-01-09",
+            "type": "WORK",
+            "startHour": 8,
+            "endHour": 20,
+            "hours": 12
           }
         },
         "monthlyContactHours": {
@@ -764,10 +774,12 @@
             "hours": 12
           },
           "2026-01-06": {
-            "id": "muu9aewzg",
+            "id": "9rr8e9ktj",
             "date": "2026-01-06",
-            "type": "W",
-            "hours": 0
+            "type": "WORK",
+            "startHour": 14,
+            "endHour": 20,
+            "hours": 6
           },
           "2025-10-07": {
             "id": "tk63m5itv",
@@ -2265,5 +2277,5 @@
       "createdAt": 1763864548395
     }
   ],
-  "timestamp": 1763900343891
+  "timestamp": 1763907237030
 }
