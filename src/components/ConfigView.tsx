@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Save, Server, Shield, Cpu, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { Settings, Save, Server, Shield, Cpu, RefreshCw, CheckCircle, AlertCircle, Info as InfoIcon } from 'lucide-react';
 import { useScheduleStore } from '../store/useScheduleStore';
 import { useChatStore } from '../store/useChatStore';
 
@@ -7,16 +7,15 @@ export const ConfigView: React.FC = () => {
     const { schedule, staffingRules, updateStaffingRules } = useScheduleStore();
     const { sessions } = useChatStore();
 
-    // AI Settings State (persisted via server sync)
     const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai_api_key') || import.meta.env.VITE_OPENAI_API_KEY || '');
     const [model, setModel] = useState(() => localStorage.getItem('openai_model') || 'google/gemini-2.0-flash-exp:free');
 
-    // Sync State
     const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [syncMessage, setSyncMessage] = useState('');
+
+    // 1. WAŻNE: Pusty adres! Dzięki temu telefon zadziała.
     const [serverUrl, setServerUrl] = useState('');
 
-    // Staffing Rules State
     const [minStaffMorning, setMinStaffMorning] = useState(staffingRules?.minStaffMorning || 2);
     const [minStaffEvening, setMinStaffEvening] = useState(staffingRules?.minStaffEvening || 1);
     const [minStaffNight, setMinStaffNight] = useState(staffingRules?.minStaffNight || 1);
@@ -34,7 +33,10 @@ export const ConfigView: React.FC = () => {
         localStorage.setItem('openai_model', model);
         setSyncStatus('success');
         setSyncMessage('Ustawienia AI zapisane lokalnie.');
+
+        // 2. WAŻNE: Powiadom Czat o zmianie klucza!
         window.dispatchEvent(new Event('local-storage-update'));
+
         setTimeout(() => setSyncStatus('idle'), 3000);
     };
 
@@ -51,14 +53,12 @@ export const ConfigView: React.FC = () => {
                 },
                 timestamp: Date.now()
             };
-
-            // 2. Zmiana: Usunięte ${serverUrl}, została sama ścieżka '/api/data'
+            // 3. Używamy samego '/api/data' (bez serverUrl)
             const response = await fetch('/api/data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-
             if (!response.ok) throw new Error('Błąd zapisu na serwerze');
             setSyncStatus('success');
             setSyncMessage('Dane pomyślnie wysłane na serwer!');
@@ -72,21 +72,14 @@ export const ConfigView: React.FC = () => {
     const handleSyncPull = async () => {
         setSyncStatus('loading');
         try {
-            // 3. Zmiana: Tutaj też sama ścieżka '/api/data'
+            // 4. Tutaj też '/api/data'
             const response = await fetch('/api/data');
-
             if (!response.ok) throw new Error('Błąd pobierania z serwera');
             const data = await response.json();
 
-            // Restore schedule
-            if (data.schedule) {
-                useScheduleStore.getState().restoreSchedule(data.schedule);
-            }
-            // Restore chat sessions
-            if (data.chatSessions && Array.isArray(data.chatSessions)) {
-                useChatStore.getState().restoreSessions(data.chatSessions);
-            }
-            // Restore settings and persist to localStorage
+            if (data.schedule) useScheduleStore.getState().restoreSchedule(data.schedule);
+            if (data.chatSessions && Array.isArray(data.chatSessions)) useChatStore.getState().restoreSessions(data.chatSessions);
+
             if (data.settings) {
                 if (data.settings.apiKey) {
                     setApiKey(data.settings.apiKey);
@@ -104,7 +97,10 @@ export const ConfigView: React.FC = () => {
                     if (rules.customRules) setCustomRules(rules.customRules);
                 }
             }
+
+            // 5. WAŻNE: Powiadom Czat o zmianie po pobraniu z serwera!
             window.dispatchEvent(new Event('local-storage-update'));
+
             setSyncStatus('success');
             setSyncMessage('Dane pomyślnie pobrane z serwera!');
         } catch (error) {
@@ -116,7 +112,6 @@ export const ConfigView: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 p-6">
-            {/* Header */}
             <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg p-6 text-white shadow-lg flex items-center gap-4">
                 <Settings size={32} className="text-blue-400" />
                 <div>
@@ -234,12 +229,13 @@ export const ConfigView: React.FC = () => {
                     Wymaga uruchomionego `node server.js`.
                 </p>
                 <div className="flex flex-col md:flex-row gap-4 items-center">
+                    {/* 6. Input jest pusty i opcjonalny (dla lokalnych testów), ale domyślnie używa /api */}
                     <input
                         type="text"
                         value={serverUrl}
                         onChange={(e) => setServerUrl(e.target.value)}
                         className="flex-1 p-2 border dark:border-gray-600 rounded text-sm font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        placeholder="http://localhost:3001"
+                        placeholder="Adres serwera (zostaw puste dla biudulgrafik.pl)"
                     />
                     <button
                         onClick={handleSyncPush}
@@ -256,7 +252,6 @@ export const ConfigView: React.FC = () => {
                         <RefreshCw size={18} /> Pobierz z Serwera
                     </button>
                 </div>
-                {/* Status Message */}
                 {syncMessage && (
                     <div className={`p-3 rounded flex items-center gap-2 ${syncStatus === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
                         syncStatus === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
@@ -271,13 +266,3 @@ export const ConfigView: React.FC = () => {
         </div>
     );
 };
-
-function InfoIcon(props: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 16v-4" />
-            <path d="M12 8h.01" />
-        </svg>
-    );
-}

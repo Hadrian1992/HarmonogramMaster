@@ -15,17 +15,18 @@ export const AIAssistant: React.FC = () => {
     const [model, setModel] = useState(() => localStorage.getItem('openai_model') || 'google/gemini-2.0-flash-exp:free');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    // >>> WKLEJ CAŁY TEN BLOK PONIŻEJ: <<<
+    const { schedule, staffingRules } = useScheduleStore();
+    const { sessions, currentSessionId, addSession, deleteSession, selectSession, addMessage } = useChatStore();
+
+    // 7. TO JEST TEN NOWY KOD - Nasłuchiwanie zmian w kluczu!
     useEffect(() => {
         const handleStorageChange = () => {
             const newKey = localStorage.getItem('openai_api_key');
             const newModel = localStorage.getItem('openai_model');
-            // Tylko jeśli faktycznie się zmieniło, żeby nie robić pętli
             if (newKey !== apiKey) setApiKey(newKey || '');
             if (newModel !== model) setModel(newModel || 'google/gemini-2.0-flash-exp:free');
         };
 
-        // Nasłuchuj zmian
         window.addEventListener('storage', handleStorageChange);
         window.addEventListener('local-storage-update', handleStorageChange);
 
@@ -34,8 +35,7 @@ export const AIAssistant: React.FC = () => {
             window.removeEventListener('local-storage-update', handleStorageChange);
         };
     }, [apiKey, model]);
-    const { schedule, staffingRules } = useScheduleStore();
-    const { sessions, currentSessionId, addSession, deleteSession, selectSession, addMessage } = useChatStore();
+    // -----------------------------------------------------------
 
     // Initialize session if none exists
     useEffect(() => {
@@ -54,6 +54,9 @@ export const AIAssistant: React.FC = () => {
         localStorage.setItem('openai_model', model);
         setShowSettings(false);
 
+        // Tutaj też możemy dać event, dla pewności
+        window.dispatchEvent(new Event('local-storage-update'));
+
         if (currentSessionId) {
             addMessage(currentSessionId, {
                 id: Date.now().toString(),
@@ -65,12 +68,12 @@ export const AIAssistant: React.FC = () => {
     };
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages, isOpen, showHistory]);
+        if (isOpen) scrollToBottom();
+    }, [messages, isOpen]);
 
     const handleSend = async () => {
         if (!input.trim() || !currentSessionId) return;
@@ -87,8 +90,7 @@ export const AIAssistant: React.FC = () => {
         setIsTyping(true);
 
         try {
-            const response: AIResponse = await askAI(userMessage.text, schedule, apiKey, model, staffingRules);
-
+            const response = await askAI(input, schedule, apiKey, model, staffingRules);
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 text: response.text,
@@ -96,12 +98,12 @@ export const AIAssistant: React.FC = () => {
                 timestamp: new Date(),
                 suggestedActions: response.suggestedActions
             };
-
             addMessage(currentSessionId, aiMessage);
         } catch (error) {
+            console.error(error);
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
-                text: 'Przepraszam, wystąpił błąd podczas przetwarzania Twojego zapytania.',
+                text: "Przepraszam, wystąpił błąd połączenia. Sprawdź swój klucz API.",
                 sender: 'ai',
                 timestamp: new Date()
             };
@@ -111,21 +113,6 @@ export const AIAssistant: React.FC = () => {
         }
     };
 
-    const handleNewChat = () => {
-        addSession();
-        setShowHistory(false);
-    };
-
-    const handleSelectSession = (id: string) => {
-        selectSession(id);
-        setShowHistory(false);
-    };
-
-    const handleDeleteSession = (e: React.MouseEvent, id: string) => {
-        e.stopPropagation();
-        deleteSession(id);
-    };
-
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -133,269 +120,257 @@ export const AIAssistant: React.FC = () => {
         }
     };
 
-    const handleSuggestionClick = (suggestion: string) => {
-        setInput(suggestion);
-    };
+    // Render history sidebar
+    const renderHistory = () => (
+        <div className="w-64 border-r dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800">
+            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h3 className="font-bold text-gray-700 dark:text-gray-200">Historia</h3>
+                <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+                    <X size={16} />
+                </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                <button
+                    onClick={() => {
+                        addSession();
+                        setShowHistory(false);
+                    }}
+                    className="w-full p-2 flex items-center gap-2 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:opacity-80 transition-opacity"
+                >
+                    <Plus size={16} /> Nowa rozmowa
+                </button>
+                {sessions.map(session => (
+                    <div
+                        key={session.id}
+                        className={`group flex items-center justify-between p-2 rounded text-sm cursor-pointer ${currentSessionId === session.id
+                            ? 'bg-white dark:bg-gray-700 shadow-sm'
+                            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                        onClick={() => {
+                            selectSession(session.id);
+                            setShowHistory(false);
+                        }}
+                    >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <MessageSquare size={14} className="shrink-0 text-gray-500" />
+                            <span className="truncate text-gray-700 dark:text-gray-300">{session.title}</span>
+                        </div>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                deleteSession(session.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded transition-opacity"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    if (!isOpen) {
+        return (
+            <button
+                onClick={() => setIsOpen(true)}
+                className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform z-50"
+            >
+                <Sparkles size={24} />
+            </button>
+        );
+    }
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-            {/* Chat Window */}
-            {isOpen && (
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-80 sm:w-96 h-[500px] flex flex-col border border-gray-200 dark:border-gray-700 mb-4 animate-in slide-in-from-bottom-10 fade-in duration-200 overflow-hidden">
-                    {/* Header */}
-                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            <div className="bg-white/20 p-1.5 rounded-lg shrink-0">
-                                <Sparkles size={18} />
-                            </div>
-                            <div className="truncate">
-                                <h3 className="font-bold text-sm truncate">
-                                    {currentSession?.title || 'Asystent AI'}
-                                </h3>
-                                <p className="text-xs text-blue-100">
-                                    {model.split('/')[1]?.split(':')[0] || 'Local Mode'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                            <button
-                                onClick={() => setShowHistory(!showHistory)}
-                                className={clsx(
-                                    "hover:bg-white/20 p-1.5 rounded-full transition-colors",
-                                    showHistory && "bg-white/20"
-                                )}
-                                title="Historia czatów"
-                            >
-                                <History size={18} />
-                            </button>
-                            <button
-                                onClick={() => setShowSettings(!showSettings)}
-                                className={clsx(
-                                    "hover:bg-white/20 p-1.5 rounded-full transition-colors",
-                                    showSettings && "bg-white/20"
-                                )}
-                                title="Ustawienia AI"
-                            >
-                                <Settings size={18} />
-                            </button>
-                            <button
-                                onClick={() => setIsOpen(false)}
-                                className="hover:bg-white/20 p-1.5 rounded-full transition-colors"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
+        <div className="fixed bottom-6 right-6 w-[400px] h-[600px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border dark:border-gray-700 flex flex-col z-50 overflow-hidden">
+            {/* Header */}
+            <div className="h-14 bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-between px-4 text-white shrink-0">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-white/20 rounded-lg">
+                        <Bot size={20} />
                     </div>
+                    <div>
+                        <h3 className="font-bold text-sm">Asystent AI</h3>
+                        <p className="text-xs text-white/80 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                            Online
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className={`p-2 rounded-lg hover:bg-white/10 transition-colors ${showHistory ? 'bg-white/20' : ''}`}
+                        title="Historia rozmów"
+                    >
+                        <History size={18} />
+                    </button>
+                    <button
+                        onClick={() => setShowSettings(!showSettings)}
+                        className={`p-2 rounded-lg hover:bg-white/10 transition-colors ${showSettings ? 'bg-white/20' : ''}`}
+                        title="Ustawienia"
+                    >
+                        <Settings size={18} />
+                    </button>
+                    <button
+                        onClick={() => setIsOpen(false)}
+                        className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+            </div>
 
-                    {/* Main Content Area */}
-                    <div className="flex-1 flex overflow-hidden relative">
+            <div className="flex-1 flex overflow-hidden">
+                {showHistory && renderHistory()}
 
-                        {/* History Sidebar (Overlay) */}
-                        {showHistory && (
-                            <div className="absolute inset-0 z-20 bg-white dark:bg-gray-800 flex flex-col animate-in slide-in-from-left-10 duration-200">
-                                <div className="p-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
-                                    <h4 className="font-bold text-gray-700 dark:text-gray-300 text-sm">Twoje rozmowy</h4>
+                <div className="flex-1 flex flex-col relative">
+                    {/* Settings Overlay */}
+                    {showSettings && (
+                        <div className="absolute inset-0 bg-white dark:bg-gray-900 z-10 p-4 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="font-bold text-lg dark:text-white">Ustawienia AI</h3>
+                                <button onClick={() => setShowSettings(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Klucz API OpenRouter
+                                </label>
+                                <input
+                                    type="password"
+                                    value={apiKey}
+                                    onChange={(e) => setApiKey(e.target.value)}
+                                    className="w-full p-2 border dark:border-gray-700 rounded focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-white"
+                                    placeholder="sk-or-..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Model AI
+                                </label>
+                                <select
+                                    value={model}
+                                    onChange={(e) => setModel(e.target.value)}
+                                    className="w-full p-2 border dark:border-gray-700 rounded focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-white"
+                                >
+                                    <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
+                                    <option value="google/gemini-2.0-flash-exp:free">Google Gemini 2.0 Flash (Free)</option>
+                                    <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
+                                    <option value="qwen/qwen-2.5-vl-72b-instruct:free">Qwen 2.5 VL 72B (Free)</option>
+                                    <option value="z-ai/glm-4.5-air:free">GLM 4.5 Air (Free)</option>
+                                </select>
+                            </div>
+
+                            <button
+                                onClick={saveSettings}
+                                className="mt-auto w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Save size={18} /> Zapisz ustawienia
+                            </button>
+                            <p className="text-xs text-gray-500 text-center">
+                                Dane są zapisywane lokalnie w Twojej przeglądarce.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Messages Area */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950/50">
+                        {messages.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
+                                <div className="p-4 bg-white dark:bg-gray-800 rounded-full shadow-sm">
+                                    <MessageCircle size={32} className="text-purple-500" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="font-medium text-gray-600 dark:text-gray-300">Cześć!</p>
+                                    <p className="text-sm">Zapytaj mnie o grafik lub poproś o analizę.</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 justify-center max-w-[80%]">
                                     <button
-                                        onClick={handleNewChat}
-                                        className="bg-blue-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1 hover:bg-blue-700 transition-colors"
+                                        onClick={() => setInput("Czy są jakieś błędy w grafiku?")}
+                                        className="text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-full hover:border-purple-500 transition-colors"
                                     >
-                                        <Plus size={14} /> Nowy czat
+                                        Czy są błędy?
+                                    </button>
+                                    <button
+                                        onClick={() => setInput("Kto ma najwięcej godzin?")}
+                                        className="text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-full hover:border-purple-500 transition-colors"
+                                    >
+                                        Kto ma nadgodziny?
                                     </button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                                    {sessions.map(session => (
-                                        <div
-                                            key={session.id}
-                                            onClick={() => handleSelectSession(session.id)}
-                                            className={clsx(
-                                                "p-3 rounded-lg cursor-pointer flex justify-between items-center group transition-colors",
-                                                currentSessionId === session.id ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800" : "hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-2 overflow-hidden">
-                                                <MessageCircle size={16} className={currentSessionId === session.id ? "text-blue-500 dark:text-blue-400" : "text-gray-400"} />
-                                                <div className="truncate">
-                                                    <p className={clsx("text-sm font-medium truncate", currentSessionId === session.id ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300")}>
-                                                        {session.title}
-                                                    </p>
-                                                    <p className="text-[10px] text-gray-400">
-                                                        {new Date(session.createdAt).toLocaleDateString()}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={(e) => handleDeleteSession(e, session.id)}
-                                                className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                                                title="Usuń czat"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {sessions.length === 0 && (
-                                        <div className="text-center text-gray-400 text-xs py-8">
-                                            Brak historii rozmów
-                                        </div>
-                                    )}
-                                </div>
                             </div>
-                        )}
-
-                        {/* Settings Panel (Overlay) */}
-                        {showSettings && (
-                            <div className="absolute inset-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold text-gray-800 dark:text-white">Ustawienia AI</h4>
-                                    <button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-gray-700">
-                                        <X size={18} />
-                                    </button>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                            Klucz API OpenRouter
-                                        </label>
-                                        <input
-                                            type="password"
-                                            value={apiKey}
-                                            onChange={(e) => setApiKey(e.target.value)}
-                                            placeholder="sk-..."
-                                            className="w-full text-xs p-2 rounded border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                            Model AI
-                                        </label>
-                                        <select
-                                            value={model}
-                                            onChange={(e) => setModel(e.target.value)}
-                                            className="w-full text-xs p-2 rounded border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                        >
-                                            <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
-                                            <option value="google/gemini-2.0-flash-exp:free">Google Gemini 2.0 Flash (Free)</option>
-                                            <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
-                                            <option value="qwen/qwen-2.5-vl-72b-instruct:free">Qwen 2.5 VL 72B (Free)</option>
-                                            <option value="z-ai/glm-4.5-air:free">GLM 4.5 Air (Free)</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="flex justify-end pt-2">
-                                        <button
-                                            onClick={saveSettings}
-                                            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-green-700 transition-colors shadow-sm"
-                                        >
-                                            <Save size={16} /> Zapisz ustawienia
-                                        </button>
-                                    </div>
-
-                                    <p className="text-[10px] text-gray-500 text-center mt-4">
-                                        Dane są zapisywane lokalnie w Twojej przeglądarce.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900 w-full">
-                            {messages.map((msg) => (
+                        ) : (
+                            messages.map(msg => (
                                 <div
                                     key={msg.id}
-                                    className={clsx(
-                                        "flex gap-3 max-w-[90%]",
-                                        msg.sender === 'user' ? "ml-auto flex-row-reverse" : ""
-                                    )}
+                                    className={`flex gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
                                 >
-                                    <div className={clsx(
-                                        "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm",
-                                        msg.sender === 'user' ? "bg-blue-600 text-white" : "bg-purple-600 text-white"
-                                    )}>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.sender === 'user'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-purple-600 text-white'
+                                        }`}>
                                         {msg.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
                                     </div>
-                                    <div className="flex flex-col gap-1 min-w-0">
-                                        <div className={clsx(
-                                            "p-3 rounded-2xl text-sm shadow-sm whitespace-pre-wrap break-words",
-                                            msg.sender === 'user'
-                                                ? "bg-blue-600 text-white rounded-tr-none"
-                                                : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-700 rounded-tl-none"
-                                        )}>
+                                    <div className={`flex flex-col gap-1 max-w-[80%] ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                                        <div
+                                            className={`p-3 rounded-2xl text-sm ${msg.sender === 'user'
+                                                ? 'bg-blue-600 text-white rounded-tr-sm'
+                                                : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm border dark:border-gray-700 rounded-tl-sm'
+                                                }`}
+                                        >
                                             {msg.text}
                                         </div>
-
-                                        {/* Suggested Actions */}
-                                        {msg.suggestedActions && (
-                                            <div className="flex flex-wrap gap-2 mt-1">
-                                                {msg.suggestedActions.map((action, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => handleSuggestionClick(action)}
-                                                        className="text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full border border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
-                                                    >
-                                                        {action}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-
                                         <span className="text-[10px] text-gray-400 px-1">
                                             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 </div>
-                            ))}
-
-                            {isTyping && (
-                                <div className="flex gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                                        <Bot size={16} />
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl rounded-tl-none border border-gray-100 dark:border-gray-700 shadow-sm flex gap-1 items-center">
-                                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                    </div>
+                            ))
+                        )}
+                        {isTyping && (
+                            <div className="flex gap-3">
+                                <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center shrink-0">
+                                    <Bot size={16} className="text-white animate-pulse" />
                                 </div>
-                            )}
-                            <div ref={messagesEndRef} />
-                        </div>
+                                <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl rounded-tl-sm shadow-sm border dark:border-gray-700 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shrink-0">
-                        <div className="flex gap-2">
+                    <div className="p-4 bg-white dark:bg-gray-900 border-t dark:border-gray-700">
+                        <div className="relative flex items-center gap-2">
                             <input
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyPress}
-                                placeholder="Zapytaj o grafik..."
-                                className="flex-1 p-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                                disabled={isTyping}
+                                placeholder="Napisz wiadomość..."
+                                className="flex-1 p-3 pr-12 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm dark:text-white"
                             />
                             <button
                                 onClick={handleSend}
                                 disabled={!input.trim() || isTyping}
-                                className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                className="absolute right-2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:hover:bg-purple-600 transition-colors"
                             >
-                                <Send size={18} />
+                                <Send size={16} />
                             </button>
+                        </div>
+                        <div className="text-[10px] text-center text-gray-400 mt-2">
+                            Model: {model.split('/')[1] || model}
                         </div>
                     </div>
                 </div>
-            )}
-
-            {/* Floating Button */}
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={clsx(
-                    "p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center",
-                    isOpen ? "bg-gray-500 text-white rotate-90" : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                )}
-            >
-                {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
-            </button>
+            </div>
         </div>
     );
 };
