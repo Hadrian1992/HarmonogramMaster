@@ -83,6 +83,18 @@ function App() {
         useChatStore.getState().restoreSessions(data.chatSessions);
       }
 
+      // Restore settings to localStorage
+      if (data.settings) {
+        if (data.settings.apiKey) {
+          localStorage.setItem('openai_api_key', data.settings.apiKey);
+        }
+        if (data.settings.model) {
+          localStorage.setItem('openai_model', data.settings.model);
+        }
+        // Staffing rules are handled by ConfigView or store, but we can update store if needed
+        // For now, let's assume staffing rules are part of schedule store or loaded by ConfigView
+      }
+
       setSyncStatus('success');
       setSyncMessage('✓ Dane wczytane z serwera!');
       setTimeout(() => {

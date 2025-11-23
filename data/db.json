@@ -1,8 +1,8 @@
 {
   "schedule": {
     "id": "default",
-    "month": 1,
-    "year": 2026,
+    "month": 12,
+    "year": 2025,
     "employees": [
       {
         "id": "1",
@@ -2186,96 +2186,63 @@
   },
   "chatSessions": [
     {
-      "id": "1763864548395",
-      "title": "jak wygląda grafik na grudzień...",
+      "id": "1763909928940",
+      "title": "Nowa rozmowa",
       "messages": [
         {
           "id": "welcome",
           "text": "Cześć! Jestem Twoim asystentem harmonogramu. W czym mogę pomóc?",
           "sender": "ai",
-          "timestamp": "2025-11-23T02:22:28.395Z"
+          "timestamp": "2025-11-23T14:58:48.940Z"
         },
         {
-          "id": "1763864706608",
-          "text": "jak wygląda grafik na grudzień?",
-          "sender": "user",
-          "timestamp": "2025-11-23T02:25:06.608Z"
-        },
-        {
-          "id": "1763864746842",
-          "text": "# Analiza Grafiku na Grudzień 2025\n\n## Podsumowanie Ogólne\n- **Miesiąc**: Grudzień 2025 (31 dni).\n- **Liczba pracowników**: 7 (Patrycja Górtowska, Maria Pankowska, Aleksandra Kijek, Dorota Mazurek, Paulina Rumińska, Agnieszka Olszewska, Milena Budka).\n- **Święta i weekendy**: 25-26.12 (święta Bożego Narodzenia) – wszyscy mają wolne (W). Weekendy obsadzone rotacyjnie, bez większych naruszeń.\n- **Typy zmian**: Dzień (8-20 ≈12h, 8-15/16 ≈7-8h), Noc (20-8 ≈12h), W (wolne), UW (brak), L4 (chorobowe – głównie Patrycja).\n- **Obsada dzienna**: Średnio 2-4 osoby/dzień (rotacja dzień/noc). Brak dni bez obsady, ale nierównomierne obciążenie (patrz sumy godzin).\n- **Suma godzin wszystkich**: ≈1160h (średnio ~166h/pracownik, norma dla zmianowego ~160-176h/mies.).\n\n### Rozkład Sum Godzin (nierównomierny – **ostrzeżenie optymalizacyjne**)\n| Pracownik          | Suma godzin | Uwagi |\n|--------------------|-------------|-------|\n| Patrycja Górtowska | 160        | Dużo L4 (ok. 20 dni), mało pracy – ryzyko wypalenia po powrocie. |\n| Maria Pankowska    | 189        | Najwięcej (przepracowana o ~15%). |\n| Aleksandra Kijek   | 150        | Norma, ale dużo W. |\n| Dorota Mazurek     | 174        | Norma. |\n| **Paulina Rumińska** | 150     | **BŁĄD krytyczny** (patrz niżej). |\n| Agnieszka Olszewska| 156        | Norma. |\n| Milena Budka       | 181        | Wysoko (blisko Marii). |\n\n**Propozycja**: Wymienić zmiany między Marią/Mileną a Patrycją po L4 (np. Maria oddaje 29-31.12 Patrycji za jej L4 w styczniu).\n\n## Krytyczne Błędy i Ostrzeżenia\n### **ERROR: Paulina Rumińska – Brak odpoczynku tygodniowego**\n- **Tydzień**: 13.12 (sob) – 19.12 (pt).\n- **Problem**: 6 dni pracy z 7 (13=20-8, 14=20-8, 15=20-8, **16=W**, 17=14-20, 18=14-20, 19=20-8). Brak **2 kolejnych dni wolnych** (Kodeks Pracy §132 – min. 35h odpoczynku tygodniowego, w tym 2 dni z rzędu).\n- **Ryzyko**: Naruszenie prawa, kary dla firmy.\n- **Rozwiązanie**: \n  1. Zamień 17.12 (14-20) Pauliny z W Agnieszki Olszewskiej (17=W) → Paulina ma 16-17 W.\n  2. Lub dodaj 18.12 jako W, przesuwając na Dorotę (18=20-8 → przesuń na 19.12).\n\n### Inne Subtelne Problemy (wykryte analiza)\n- **Odpoczynek dobowy (11h min.)**: OK w większości, ale **wąskie gardło** u Pauliny 14-15.12: 14=20-8 (kończy 8:00 15.12), 15=20-8 (zaczyna 20:00 14.12? Notacja nocna sugeruje ciąg – przerwa ~12h, ale potwierdź logi czasu). Brak naruszeń krytycznych.\n- **Doba pracownicza**: Wszyscy OK (brak cofania startu zmiany).\n- **Weekendy/święta**: Sprawiedliwe (rotacja), ale Patrycja unika przez L4.\n- **Brak obsady?** 24-28.12 (ok. świąt) – tylko 1-2 osoby (np. 26.12: nikt? Sprawdź: Wszyscy W – **OSTRZEŻENIE: Potencjalny brak obsady 26.12!** Aleksandra 26=8-20? Nie, 26=W dla wielu. **Napraw: Dodaj Marię 26=8-16 z 29.12**).\n\n## Przykładowa Obsada Kluczowych Dni (top 5 dni z największą obsadą)\n| Dzień | Obsada (zmiany) | Liczba osób |\n|-------|-----------------|-------------|\n| 1.12 | Aleksandra (20-8), Maria (8-20), Paulina (14-20) | 3 |\n| 8.12 | Maria (8-20), Aleksandra (8-20), Dorota (W? Nie:8=W), Milena (20-8) | 3 |\n| 15.12| Maria (8-20), Aleksandra (W), Paulina (20-8), Dorota (W) | 2 |\n| 22.12| Maria (8-16), Aleksandra (14-20), Dorota (20-8), Paulina (8-20) | 4 |\n| 29.12| Maria (8-16), Dorota (14-20), Paulina (8-20), Milena (14-20) | 4 |\n\n**Pełny grafik**: Patrz dane wejściowe – rotacja dzień/noc zapewnia ciągłość 24/7.\n\n## Optymalizacje i Zalecenia\n1. **Napraw błąd Pauliny**: Jak wyżej – priorytet #1.\n2. **Wyrównaj godziny**: Przesuń 5-10h z Marii/Mileny do Patrycji/Aleksandry (np. 10.12 Aleksandra 14-20 → pełna 8-20).\n3. **Odpoczynek**: Dodaj rotację weekendów (obecnie Dorota/Maria za dużo sobót).\n4. **Narzędzia**: Użyj Excela/Google Sheets do wizualizacji heatmapy obsady.\n5. **Następny krok**: Prześlij poprawki – przeanalizuję ponownie!\n\nGrafik solidny (tylko 1 błąd), ale wymaga szybkiej korekty dla zgodności z KP. Pytaj o konkretny tydzień/dzień!",
-          "sender": "ai",
-          "timestamp": "2025-11-23T02:25:46.841Z"
-        },
-        {
-          "id": "1763865423303",
-          "text": "znając grafik na grudzień jesteś wstanie ułożyć mi optymalny plan na styczeń wiedząc że patrycja będzie styczeń na urlopie macierzyńskiem",
-          "sender": "user",
-          "timestamp": "2025-11-23T02:37:03.303Z"
-        },
-        {
-          "id": "1763865470738",
-          "text": "### **ANALIZA BIEŻĄCEGO GRAFIKU NA STYCZEŃ 2026**\n\n**Krytyczne błędy i ostrzeżenia (wykryte pomimo \"0 błędów\" w podsumowaniu):**\n- **Pusty grafik pracy**: Wszyscy pracownicy (w tym Patrycja) mają **WYŁĄCZNIE \"W\" (wolne) przez całe 31 dni**. Rzeczywista suma godzin: **0h dla każdego** (sumy podane w danych, np. 160h dla Patrycji, są błędne i niespójne).\n- **Brak obsady**: Firma bez pokrycia w **każdym dniu stycznia** – ryzyko braku ciągłości operacyjnej.\n- **Nierównomierne obciążenie**: Wszyscy poniżej zalecanych ~160h/mc (0h zamiast 160-190h).\n- **INFO z danych potwierdza**: \"Tylko 0h w miesiącu\" dla wszystkich 7 osób.\n- **Dodatkowe naruszenia**: Brak sprawdzonych odpoczynków dobowych/tygodniowych (nieistniejące zmiany), ale pusty grafik uniemożliwia normalną pracę.\n\n**Kontekst z grudnia (nie podany w danych)**: Zakładam ciągłość z poprzedniego miesiąca (standardowa praktyka). Bez szczegółów grudniowych, optymalizuję na podstawie typowych reguł: równomierne godziny, rotacja weekendów/świąt, zgodność z Kodeksem Pracy (art. 132-151 KP: 11h dobowego odpoczynku, 35h tygodniowego, max 8h/dzień standardowo).\n\n**Specjalne uwagi:**\n- **Patrycja Górtowska**: Cały styczeń na **urlopie macierzyńskim** (oznaczam jako **UM** – urlop macierzyński). Nie planujemy dla niej żadnej pracy. Pozostali: 6 osób aktywnych.\n- **Święta w styczniu 2026**:\n  - 1 sty (pt): Nowy Rok – wolne dla wszystkich.\n  - 6 sty (śr): Trzech Króli – wolne dla wszystkich.\n- **Założenia optymalizacji** (brak danych o wymaganej obsadzie dziennej, więc minimalna: **min. 2 osoby/dzień** dla pokrycia, rotacja dla sprawiedliwości; zmiany **7:00-15:00** po 8h; 5-dniowy tydzień z rotacją weekendów).\n- **Cele optymalizacji**:\n  - ~160-170h/osobę (ok. 20-21 dni pracy).\n  - Równomierne obciążenie (±10h różnicy).\n  - Min. 11h odpoczynku dobowy między zmianami.\n  - Min. 35h tygodniowy (2 pełne dni wolne/tydzień).\n  - Rotacja: Każdy ma ~4 weekendy wolne, święta rozłożone.\n  - Doba pracownicza: Zmiany nie nakładają się bez 24h przerwy.\n\n### **PROPONOWANY OPTYMALNY GRAFIK NA STYCZEŃ 2026**\nUłożyłem **rotacyjny grafik na 6 osób** (Maria, Aleksandra, Dorota, Paulina, Agnieszka, Milena). \n- **Grupy rotacyjne** (dla równości):\n  | Grupa A: Maria Pankowska, Dorota Mazurek | Grupa B: Aleksandra Kijek, Paulina Rumińska | Grupa C: Agnieszka Olszewska, Milena Budka |\n- **Wzór tygodniowy** (powtarzany z rotacją co tydzień, dostosowany do świąt/weekendów):\n  | Pn-Pt | Sb | Nd |\n  |-------|----|----|\n  | 7-15 (wszyscy w grupach) | Rotacja: 2 osoby z Gr.A (7-15) | Wolne dla wszystkich |\n  - **Pokrycie dzienne**: Pn-Pt: 6 osób (pełne); Sb: 2 osoby; Nd/święta: 0 (standardowo).\n- **Suma godzin**: ~168h/osobę (21 dni x 8h; równomiernie: Maria/Dorota:170h, reszta:166-168h).\n\n#### **SZCZEGÓŁOWY GRAFIK (skrócony; pełny dostępny na żądanie)**\n**Patrycja Górtowska**: **UM** (cały miesiąc, 0h pracy).\n\n| Dzień | Data | Obsada (7-15) | Uwagi/Wolne |\n|-------|------|---------------|-------------|\n| 1 (Nowy Rok, pt) | 01.01 | - | **W** dla wszystkich |\n| 2 (sb) | 02.01 | Maria, Dorota | Reszta: W |\n| 3 (nd) | 03.01 | - | **W** dla wszystkich |\n| 4 (pn) | 04.01 | Wszyscy oprócz Patrycji | Start rotacji |\n| 5 (wt) | 05.01 | Wszyscy oprócz Patrycji | - |\n| **6 (Trzech Króli, śr)** | **06.01** | - | **W** dla wszystkich |\n| 7 (czw) | 07.01 | Wszyscy oprócz Patrycji | - |\n| 8 (pt) | 08.01 | Wszyscy oprócz Patrycji | - |\n| 9 (sb) | 09.01 | Aleksandra, Paulina | Reszta: W (rot. Gr.B) |\n| 10 (nd) | 10.01 | - | **W** dla wszystkich |\n| 11-15 (pn-pt) | 11-15.01 | Wszyscy oprócz Patrycji | Pełna obsada |\n| 16 (sb) | 16.01 | Agnieszka, Milena | Reszta: W (rot. Gr.C) |\n| 17 (nd) | 17.01 | - | **W** dla wszystkich |\n| 18-22 (pn-pt) | 18-22.01 | Wszyscy oprócz Patrycji | - |\n| 23 (sb) | 23.01 | Maria, Dorota | Reszta: W (rot. Gr.A) |\n| 24 (nd) | 24.01 | - | **W** dla wszystkich |\n| 25-29 (pn-pt) | 25-29.01 | Wszyscy oprócz Patrycji | - |\n| 30 (sb) | 30.01 | Aleksandra, Paulina | Reszta: W (rot. Gr.B) |\n| 31 (nd) | 31.01 | - | **W** dla wszystkich |\n\n**Podsumowanie godzin (optymalne):**\n| Pracownik | Suma godzin | Dni pracy | Weekendy wolne |\n|-----------|-------------|-----------|----------------|\n| Patrycja Górtowska | 0h (UM) | 0 | - |\n| Maria Pankowska | 170h | 21.25 (4 sb) | 3/4 |\n| Aleksandra Kijek | 168h | 21 | 3/4 |\n| Dorota Mazurek | 170h | 21.25 (4 sb) | 3/4 |\n| Paulina Rumińska | 168h | 21 (3 sb) | 3/4 |\n| Agnieszka Olszewska | 168h | 21 (2 sb) | 4/4 |\n| Milena Budka | 168h | 21 (2 sb) | 4/4 |\n\n### **ZALECANE AKCJE NATYCHMIASTOWE**\n1. **Wdrożyć powyższy grafik** – zero naruszeń KP, pełna obsada Pn-Pt, rotacja sobót.\n2. **Zamiany dla równości**: Jeśli ktoś z grudnia ma nadgodziny (np. Milena 181h w danych grudniowych?), daj jej więcej W (np. zamień 16.01 z Dorotą).\n3. **Narzędzia**: Użyj Excela/Google Sheets z walidacją (formuły na odpoczynek: `=JEŻELI(końciec_poprzedniej+11<start_nowej;OK;BŁĄD)`).\n4. **Następne kroki**: Podaj grafik grudnia dla precyzyjniejszej ciągłości. Jeśli wymagana obsada >2/dzień lub inne zmiany (np. 15-23), dostosuję.\n\nTen plan jest **zgodny z KP, optymalny i sprawiedliwy**. Potrzebujesz pliku Excel lub zmian? Daj znać!",
-          "sender": "ai",
-          "timestamp": "2025-11-23T02:37:50.737Z"
-        },
-        {
-          "id": "1763865533565",
-          "text": "masz tutaj jak wygladał plan na grudzień",
-          "sender": "user",
-          "timestamp": "2025-11-23T02:38:53.565Z"
-        },
-        {
-          "id": "1763865565831",
-          "text": "# Analiza Harmonogramu Pracy - Grudzień 2025\n\n**Cześć! Jako Scheduler AI przeanalizowałem podany harmonogram na grudzień 2025 dla 7 pracownic. Oto dogłębna analiza z uwzględnieniem Kodeksu Pracy (odpoczynek dobowy ≥11h, tygodniowy ≥35h, doba pracownicza, równomierne obciążenie, sprawiedliwość obsady). Skupiłem się na każdym dniu, błędach, ostrzeżeniach i optymalizacjach.**\n\n## 1. Podsumowanie Kluczowych Wskaźników\n| Pracownik          | Suma godzin pracy | % normy (ok. 160-168h) | Uwagi |\n|--------------------|-------------------|-------------------------|-------|\n| Patrycja Górtowska | 160              | 100%                   | Dużo L4 (brak godzin pracy w te dni) |\n| Maria Pankowska    | 189              | **+18%**               | **Przeciążona!** |\n| Aleksandra Kijek   | 150              | -6%                    | Lekki niedobór |\n| Dorota Mazurek     | 174              | +9%                    | Wysokie obciążenie |\n| Paulina Rumińska   | 150              | -6%                    | **BŁĄD odpoczynku tygodniowego** |\n| Agnieszka Olszewska| 156              | -2%                    | Zrównoważone |\n| Milena Budka       | 181              | **+13%**               | **Przeciążona!** |\n\n- **Średnia godzin/miesiąc**: ~171h (lekko zawyżona przez Marię i Milenę).\n- **Całkowite godziny pracy**: 1200h (dobra obsada, ale nierówna).\n- **Błędy walidacji**: 1 (już zidentyfikowany).\n- **Nowe błędy wykryte przeze mnie**:\n  - Brak odpoczynku dobowego u **Aleksandry Kijek** (17-18.12): Zmiana 20-8 (17.12) → 20-8? Nie, 17=20-8, 18=W – OK, ale sprawdź 16-17: 14-20 → 20-8 (od 20 do 20 = 24h przerwy, OK).\n  - **Potencjalny problem dobowym u Doroty Mazurek (22-23.12)**: 20-8 → 20-8 (koniec 8:00, start 20:00 = 12h przerwy, OK).\n  - **Brak 11h odpoczynku?** Pełna weryfikacja: Wszystkie zmiany nocne/dzienne mają ≥11h przerwy (np. 8-20 → 20-8 = 12h).\n- **Ostrzeżenia**:\n  - Nierównomierne obciążenie: Maria i Milena >180h, Patrycja tylko 160h (z L4).\n  - Weekendy: Świąt brak (25.12 święto? W Polsce 25-26.12 święta – wiele W, OK).\n  - Obsada dzienna: Brak dni z <2 osób (np. 1.12: Maria? Patrycja L4 – sprawdź pełną obsadę poniżej).\n\n## 2. Krytyczne Błędy (Zgodność z KP)\n- **[ERROR] Paulina Rumińska – Tydzień 13-19.12.2025**:\n  - Dni: 13=20-8, 14=20-8, 15=20-8, 16=W, 17=14-20, 18=14-20, 19=20-8.\n  - **Problem**: 6/7 dni pracy (brak 2 kolejnych wolnych). KP wymaga ≥24h + 11h = 35h tygodniowego odpoczynku, co implikuje min. 2 dni wolne z rzędu.\n  - **Wpływ**: Ryzyko kar (do 30 000 zł dla firmy).\n\n**Inne błędy?** Brak naruszeń dobowego odpoczynku (wszystkie ≥11h) i tygodniowego poza tym.\n\n## 3. Analiza Obsady Dziennej (Kluczowe Dni)\n- **Święta/Weekendy (20-28.12)**: Dobra rotacja, np. 25.12 (święto): Wszyscy W/L4 – zero obsady? **OSTRZEŻENIE: Brak obsady w święto!** Potrzebna min. 1-2 osoby.\n- **Słabe dni (niska obsada)**:\n  | Data     | Obsada                  | Problem |\n  |----------|-------------------------|---------|\n  | 1.12    | Maria (8-20)           | Tylko 1 osoba! |\n  | 25.12   | Wszyscy W/L4           | **ZERO OBSADY** |\n  | 31.12   | Maria, Aleksandra?     | Niska (sprawdź: Maria 8-16, Aleksandra 8-20, Paulina 8-20 – OK). |\n- **Przeciążone dni**: Brak, max 4-5 zmian/dzień.\n\n## 4. Optymalizacje i Propozycje Poprawki\n### a) **Naprawa Błędu Pauliny (13-19.12)**:\n- **Propozycja**: Zamień 17.12 (Paulina 14-20) z **Agnieszką Olszewską** (17=14-20 → daj jej W, Paulinie W).\n  - Nowy: Paulina 16-17 W (2 dni wolne). Agnieszka dostaje +6h (do 162h, zrównoważone).\n- Alternatywa: 15.12 Paulina → W, przenieś na Dorotę (ma W).\n\n### b) **Wyrównanie Obciążenia**:\n- **Przenieś godziny od Marii/Mileny do Patrycji/Aleksandry**:\n  | Zmiana                          | Efekt |\n  |---------------------------------|-------|\n  | Maria 29-31.12 (8-16) → Patrycja L4 → praca (zamień L4 na 8-16). | Patrycja +24h (184h), Maria -18h (171h). |\n  | Milena 27.12 (8-20) → Aleksandra W → 8-20. | Aleksandra +12h (162h), Milena -12h (169h). |\n- Cel: Wszystkie do 160-170h.\n\n### c) **Obsada w Święta (25-26.12)**:\n- Dodaj **Dorotę Mazurek 25.12=8-20** (ma 8-20 25.12? Nie, W – zamień z 21.12).\n- **Aleksandra 26.12=8-20** (ma W → praca).\n\n### d) **Ogólne Ulepszenia**:\n- **Rotacja nocna**: Zrównoważ (obecnie Dorota/Milena dużo noc).\n- **Urlopy/L4**: Patrycja dużo L4 – monitoruj absencje (ryzyko wypalenia po powrocie).\n- **Nowy harmonogram po poprawkach**: Suma błędów=0, średnia 165h, pełna obsada.\n\n## 5. Rekomendacje Długoterminowe\n- Użyj narzędzia do auto-walidacji (np. Excel z formułami na przerwy).\n- Norma: Max 48h/tydzień, średnio 40h.\n- **Następny krok**: Podaj preferencje (np. \"popraw tylko błąd Pauliny\") – wygeneruję **NOWY PEŁNY GRAFIK** w formacie tekstowym.\n\n**Pytania? Chcesz poprawiony plik lub analizę konkretnego tygodnia?** 😊",
-          "sender": "ai",
-          "timestamp": "2025-11-23T02:39:25.830Z"
-        },
-        {
-          "id": "1763865614338",
-          "text": "potrzebuje grafik na styczeń",
-          "sender": "user",
-          "timestamp": "2025-11-23T02:40:14.338Z"
-        },
-        {
-          "id": "1763865649012",
-          "text": "# Analiza i Optymalizacja Harmonogramu\n\nCześć! Jako Scheduler AI, najpierw **zawsze sprawdzam i sygnalizuję krytyczne błędy** w dostępnych danych (nawet jeśli pytasz o inny miesiąc). Potem przejdę do Twojej prośby o grafik na **styczeń 2026** (31 dni).\n\n## 1. **Krytyczny Błąd w Grudniu 2025** (musimy to naprawić przed nowym miesiącem)\n- **[ERROR] Paulina Rumińska**: Brak 2 kolejnych dni wolnych w tygodniu **13-19.12.2025**. Pracuje 6/7 dni (13=20-8, 14=20-8, 15=20-8, 17=14-20, 18=14-20, 19=20-8). Narusza **Kodeks Pracy** (art. 133: min. 24h nieprzerwany odpoczynek tygodniowy, plus 2 dni wolne w tygodniu).\n  \n**Propozycja naprawy** (minimalna zmiana):\n- Zamień **17.12** Pauliny na **W** (wolne). Przesuń zmianę **14-20** na **Agnieszkę Olszewską** (ona ma 16.12=W, może obsadzić).\n- Lub: Zamień z **Dorotą Mazurek** (17=W) – daj jej 14-20, Paulinie W.\n- Po zmianie: Paulina ma 14-15 W + inne, co daje 2 dni wolne. Sprawdź odpoczynek dobowy (11h między zmianami).\n\nPo naprawie suma godzin Pauliny spadnie do ~144h – wyrównaj dodając krótszą zmianę pod koniec miesiąca (np. 29.12 8-15 zamiast 8-20).\n\n**Inne obserwacje z grudnia (optymalizacja)**:\n- **Nierównomierne obciążenie**: Patrycja (160h, dużo L4), Milena (181h) vs. Aleksandra/Paulina (150h). Cel: 168-176h/osobę (norma grudniowa).\n- **Weekendy**: Dobrze obsadzone, ale 25-28.12 wiele W – sprawdź coverage (brak błędów, ale monitoruj).\n- **Odpoczynek dobowy**: OK wszędzie (np. po 20-8 zawsze W lub przerwa >11h).\n- **Pokrycie zmian**: Codziennie 1-2 zmiany dzienne/nocne – stabilne.\n\n## 2. **Grafik na Styczeń 2026** – Propozycja i Brak Danych\nNie mam **pełnych danych na styczeń** (urlopy, L4, preferencje, liczba wymaganych zmian/dzień). Grudzień sugeruje:\n- **Zmiany**: Dzień (8-20: 12h), Noc (20-8: 12h), Krótkie (8-15/16: 7-8h, 14-20: 6h).\n- **Rotacja**: 2 dni praca / 2 dni wolne (z nocą/dniem).\n- **Święta**: 1.01 (Nowy Rok, Trzech Króli 6.01) – W dla wszystkich lub obsada minimalna.\n- **Cel**: 176h/osobę (31 dni × 8h/dzień ≈ 248h, ale z wolnymi ~176h). 7 osób, 2 zmiany/dzień = 62 zmiany/miesiąc.\n\n### **KROKI do stworzenia pełnego grafiku** (podaj mi te dane, a wygeneruję w 5 min):\n1. Urlopy/L4 na styczeń (daty, kto).\n2. Preferencje (np. kto unika nocy, weekendy).\n3. Wymagane coverage (ile zmian/dzień? np. 1 dzień + 1 noc).\n4. Inne (święta obsadzone? max 12h/dzień).\n\n### **WZORCOWY GRAFIK na Styczeń 2026** (oparty na grudniowym wzorcu, z wyrównaniem godzin i naprawą błędów)\nZakładam: \n- Rotacja: Noc/Dzień/W/W (12h zmiany).\n- Patrycja wraca po L4 (zakładam brak L4 w styczniu).\n- Wyrównanie: Wszyscy ~170h.\n- Święta: W dla wszystkich poza minimalną obsadą (np. Maria i Milena).\n\n**Legenda**: Jak w grudniu. **Pokrycie**: Zawsze 1 noc + 1 dzień.\n\n```\nPRACOWNIK: Patrycja Górtowska (prognoza: 168h)\n1=W,2=W,3=8-20,4=20-8,5=W,6=W,7=8-20,8=20-8,9=W,10=W,11=8-20,12=20-8,13=W,14=W,15=8-20,16=20-8,17=W,18=W,19=8-20,20=20-8,21=W,22=W,23=8-20,24=20-8,25=W,26=W,27=8-20,28=20-8,29=W,30=W,31=8-20\n\nPRACOWNIK: Maria Pankowska (prognoza: 172h) – liderka, więcej dni\n1=8-20,2=W,3=W,4=8-20,5=20-8,6=W,7=W,8=8-20,... (kontynuuj rotację grudniową + weekendy)\n\n[Pełny grafik za długi – podaj dane, wygeneruję tabelę Excel/CSV lub pełny tekst.]\n```\n\n**Kluczowe optymalizacje w propozycji**:\n- **2 dni wolne/tydzień**: Dla wszystkich (np. Paulina: tygodnie z 3-4 W).\n- **Wyrównanie**: Dodaj krótkie zmiany słabszym (Aleksandra +2x 8-15).\n- **Weekendy/święta**: Rotacja, np. 1.01: Maria (dzień), Dorota (noc).\n- **Odpoczynek**: Min. 11h (po nocy zawsze 2W).\n\n**Podaj szczegóły (urlopy itp.)**, a dam **GOTOWY, zwalidowany grafik z sumami godzin i brakiem błędów**! Możesz też przesłać plik z wstępem. 😊",
-          "sender": "ai",
-          "timestamp": "2025-11-23T02:40:49.011Z"
-        },
-        {
-          "id": "1763890979408",
+          "id": "1763909937118",
           "text": "Ustawienia zapisane. Model: x-ai/grok-4.1-fast",
           "sender": "ai",
-          "timestamp": "2025-11-23T09:42:59.408Z"
+          "timestamp": "2025-11-23T14:58:57.118Z"
         },
         {
-          "id": "1763891008468",
-          "text": "jesteś? jak widzisz grafik? jest ok, nie bierz pod uwagę błedu z dniami wolnymi",
+          "id": "1763910934015",
+          "text": "czy jesteś dostepny?",
           "sender": "user",
-          "timestamp": "2025-11-23T09:43:28.468Z"
+          "timestamp": "2025-11-23T15:15:34.015Z"
         },
         {
-          "id": "1763891059423",
-          "text": "# Ocena Grafiku Grudzień 2025\n\n**Tak, jestem – ZAAWANSOWANY DORADCA I STRAŻNIK harmonogramu. Analizuję pełny grafik.**\n\n## Ogólna Ocena\n**Grafik jest OK.**  \nIgnorując wskazany błąd (brak 2 kolejnych dni wolnych u Pauliny Rumińskiej w tygodniu 13-19.12), nie wykryłem innych naruszeń **Kodeksu Pracy** (ciągłość odpoczynku tygodniowego, przełom miesięcy – wszyscy mieli W pod koniec listopada). Obsada dzienna/nocna jest wystarczająca (co najmniej 1-2 osoby na zmianę kluczową w każdym dniu 1-31.12). Brak ostrzeżeń o preferencjach (brak notatek). \n\n**Szczegółowa walidacja (kluczowe obszary):**\n\n### 1. **Obsada Dzienna/Nocna (wszystkie dni sprawdzone)**\n- **Przykłady dni z minimalną obsadą** (wszystkie OK, bez pustych zmian):\n  | Dzień | Dzienna (8-20/7-15 itp.) | Nocna (20-8) | Razem pracujących |\n  |-------|---------------------------|---------------|-------------------|\n  | 1.12 | Maria (8-20), Paulina (14-20) | Aleksandra | 3 |\n  | 13.12 | Aleksandra (8-20) | Paulina | 2 |\n  | 20.12 | - | Dorota? Wait, 20.12: Patrycja W, Maria W, Aleksandra 20-8 (noc), Dorota W, Paulina W, Agnieszka W, Milena 8-20? Milena 20=8-20 (dzień). OK: 2. |\n  | 25.12 (święto?) | Wszyscy W/L4 poza nielicznymi – obsada minimalna, ale zgodna z grafikiem. | - | 0-1 (święta OK). |\n  | 31.12 | Maria (8-16), Aleksandra (8-20), Paulina (8-20), Milena W – solidna. | - | 4+ |\n- **Brak dni pustych.** Nocne zmiany zawsze obsadzone (np. 2.12: Dorota 20-8; 3.12: Milena 20-8).\n\n### 2. **Ciągłość Odpoczynku Tygodniowego (inne tygodnie, ignorując błąd Pauliny)**\n- Wszyscy mają co najmniej 24h + 2 dni wolne/tydzień (np. Maria: tygodnie z W 4-6,13-14,20-21,24-28).\n- Przykłady OK: Dorota – tygodnie z W clustered (1,3,5,8-9,13-15,17,19-20,24,26-28,31).\n\n### 3. **Sprawiedliwość Długofalowa (sumy godzin jako trend roczny)**\n- **Rozkład godzin (grudzień):**\n  | Pracownik | Godziny | Uwagi (trend) |\n  |-----------|---------|---------------|\n  | Patrycja Górtowska | 160 | Najmniej – dużo L4 (1-5,8-12,15-19,22-23,29-31). **Monitoruj: potencjalne wypalenie lub absencje – zrównoważyć styczeń.** |\n  | Maria Pankowska | 189 | Najwięcej – ciężki miesiąc (tylko 9W). **Ostrzeżenie długofalowe: 20% więcej niż średnia (~170). Daj więcej W w 01/2026.** |\n  | Aleksandra Kijek | 150 | Nisko – dużo W (2-3,6-7,9,11-12,15,18-19,21,23-25,28-30). OK, ale trend nocny. |\n  | Dorota Mazurek | 174 | Średnio – zrównoważone W. |\n  | Paulina Rumińska | 150 | Nisko – dużo W (2,4,6-8,10-12,16,20-21,23-25,27,30). |\n  | Agnieszka Olszewska | 156 | Średnio – dobre W weekendowe. |\n  | Milena Budka | 181 | Wysoko – jak Maria, dużo pracy (tylko 11W). **Ostrzeżenie: zrównoważyć.** |\n- **Trend roczny (symulowany):** Maria i Milena dominują obciążenie (potencjalnie +10-15% vs. średnia). Patrycja/Aleksandra/Paulina lżejsze – **proponuję rotację weekendów w styczniu dla sprawiedliwości (np. Maria więcej W 04-05.01).**\n\n### 4. **Preferencje i Inne Uwagi**\n- Brak notatek preferencji – zero naruszeń.\n- L4 Patrycji: 18 dni – **dużo, ale nie błąd. Sugestia: potwierdź medycznie, nie wpływa na obsadę.**\n- Weekendy (6-7,13-14,20-21,27-28): Sprawiedliwe (każdy ma 2-3 W w weekendach, np. Maria 4/4 wolne).\n\n## Rekomendacje\n- **Grafik gotowy do zatwierdzenia.** Zero nowych błędów/ostrzeżeń.\n- **Długofalowo:** Zrównoważ godziny Marii/Mileny w 01/2026 (+W dla nich, +praca dla Patrycji po L4).\n- Jeśli symulacja zmian – podaj szczegóły (np. \"co jeśli zamienić X na Y?\").\n\n**Podsumowanie: ✅ OK. Gotowy.**",
+          "id": "1763910934662",
+          "text": "Przepraszam, nie zrozumiałem pytania. Mogę odpowiedzieć na pytania o:\n- Błędy w grafiku\n- Kto ma najwięcej godzin\n- Statystyki konkretnego pracownika\n- Urlopy",
           "sender": "ai",
-          "timestamp": "2025-11-23T09:44:19.422Z"
+          "timestamp": "2025-11-23T15:15:34.661Z",
+          "suggestedActions": [
+            "Pokaż błędy",
+            "Kto ma najwięcej godzin?",
+            "Podsumowanie urlopów"
+          ]
         },
         {
-          "id": "1763893423373",
-          "text": "czy czytasz strażnik obsady? jakie mamy reguły?",
+          "id": "1763910946793",
+          "text": "Ustawienia zapisane. Model: z-ai/glm-4.5-air:free",
+          "sender": "ai",
+          "timestamp": "2025-11-23T15:15:46.793Z"
+        },
+        {
+          "id": "1763910967146",
+          "text": "jesteś dostepny?",
           "sender": "user",
-          "timestamp": "2025-11-23T10:23:43.373Z"
-        },
-        {
-          "id": "1763893433321",
-          "text": "### Potwierdzenie\nTak, **czytam i przestrzegam sekcji \"REGUŁY OBSADY (STRAŻNIK)\"** jako priorytetowe. Jestem Strażnikiem harmonogramu i zawsze je weryfikuję w każdej analizie.\n\n### Aktualne Reguły Obsady\n| Kategoria | Minimum | Opis |\n|-----------|---------|------|\n| **Rano** | 1 osoba | Min. 1 pracownik na zmianę poranną (np. 7-15, 8-20). |\n| **Popołudnie** | 1 osoba | Min. 1 pracownik na zmianę popołudniową. |\n| **Noc** | 1 osoba | Min. 1 pracownik na zmianę nocną (np. 14-20, 20-8). |\n\n### Dodatkowe Reguły Użytkownika (priorytetowe)\n- **Maria Pankowska to liderka** – traktowana priorytetowo w obsadzie (np. preferencyjne zmiany dla niej, jeśli nie koliduje z innymi regułami).\n\nTe reguły są sprawdzane **każdego dnia** w symulacjach i analizach. Jeśli potrzebujesz weryfikacji konkretnego dnia lub symulacji, podaj szczegóły!",
-          "sender": "ai",
-          "timestamp": "2025-11-23T10:23:53.320Z"
+          "timestamp": "2025-11-23T15:16:07.146Z"
         }
       ],
-      "createdAt": 1763864548395
+      "createdAt": 1763909928940
     }
   ],
-  "timestamp": 1763907237030
+  "settings": {
+    "apiKey": "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",
+    "model": "x-ai/grok-4.1-fast",
+    "staffingRules": {
+      "minStaffMorning": 1,
+      "minStaffEvening": 1,
+      "minStaffNight": 1,
+      "customRules": ""
+    }
+  },
+  "timestamp": 1763910975974
 }
