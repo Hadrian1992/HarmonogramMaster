@@ -122,7 +122,7 @@ export const AIAssistant: React.FC = () => {
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
             {/* Chat Window */}
             {isOpen && (
-                <div className="bg-white rounded-2xl shadow-2xl w-80 sm:w-96 h-[500px] flex flex-col border border-gray-200 mb-4 animate-in slide-in-from-bottom-10 fade-in duration-200 overflow-hidden">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-80 sm:w-96 h-[500px] flex flex-col border border-gray-200 dark:border-gray-700 mb-4 animate-in slide-in-from-bottom-10 fade-in duration-200 overflow-hidden">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
                         <div className="flex items-center gap-2 overflow-hidden">
@@ -173,9 +173,9 @@ export const AIAssistant: React.FC = () => {
 
                         {/* History Sidebar (Overlay) */}
                         {showHistory && (
-                            <div className="absolute inset-0 z-20 bg-white flex flex-col animate-in slide-in-from-left-10 duration-200">
-                                <div className="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                    <h4 className="font-bold text-gray-700 text-sm">Twoje rozmowy</h4>
+                            <div className="absolute inset-0 z-20 bg-white dark:bg-gray-800 flex flex-col animate-in slide-in-from-left-10 duration-200">
+                                <div className="p-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+                                    <h4 className="font-bold text-gray-700 dark:text-gray-300 text-sm">Twoje rozmowy</h4>
                                     <button
                                         onClick={handleNewChat}
                                         className="bg-blue-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1 hover:bg-blue-700 transition-colors"
@@ -190,13 +190,13 @@ export const AIAssistant: React.FC = () => {
                                             onClick={() => handleSelectSession(session.id)}
                                             className={clsx(
                                                 "p-3 rounded-lg cursor-pointer flex justify-between items-center group transition-colors",
-                                                currentSessionId === session.id ? "bg-blue-50 border border-blue-100" : "hover:bg-gray-50 border border-transparent"
+                                                currentSessionId === session.id ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800" : "hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent"
                                             )}
                                         >
                                             <div className="flex items-center gap-2 overflow-hidden">
-                                                <MessageCircle size={16} className={currentSessionId === session.id ? "text-blue-500" : "text-gray-400"} />
+                                                <MessageCircle size={16} className={currentSessionId === session.id ? "text-blue-500 dark:text-blue-400" : "text-gray-400"} />
                                                 <div className="truncate">
-                                                    <p className={clsx("text-sm font-medium truncate", currentSessionId === session.id ? "text-blue-700" : "text-gray-700")}>
+                                                    <p className={clsx("text-sm font-medium truncate", currentSessionId === session.id ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300")}>
                                                         {session.title}
                                                     </p>
                                                     <p className="text-[10px] text-gray-400">
@@ -224,9 +224,9 @@ export const AIAssistant: React.FC = () => {
 
                         {/* Settings Panel (Overlay) */}
                         {showSettings && (
-                            <div className="absolute inset-0 z-30 bg-white/95 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                            <div className="absolute inset-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold text-gray-800">Ustawienia AI</h4>
+                                    <h4 className="font-bold text-gray-800 dark:text-white">Ustawienia AI</h4>
                                     <button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-gray-700">
                                         <X size={18} />
                                     </button>
@@ -234,7 +234,7 @@ export const AIAssistant: React.FC = () => {
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                                             Klucz API OpenRouter
                                         </label>
                                         <input
@@ -242,18 +242,18 @@ export const AIAssistant: React.FC = () => {
                                             value={apiKey}
                                             onChange={(e) => setApiKey(e.target.value)}
                                             placeholder="sk-..."
-                                            className="w-full text-xs p-2 rounded border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                            className="w-full text-xs p-2 rounded border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                                             Model AI
                                         </label>
                                         <select
                                             value={model}
                                             onChange={(e) => setModel(e.target.value)}
-                                            className="w-full text-xs p-2 rounded border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                            className="w-full text-xs p-2 rounded border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                         >
                                             <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
                                             <option value="google/gemini-2.0-flash-exp:free">Google Gemini 2.0 Flash (Free)</option>
@@ -280,7 +280,7 @@ export const AIAssistant: React.FC = () => {
                         )}
 
                         {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 w-full">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900 w-full">
                             {messages.map((msg) => (
                                 <div
                                     key={msg.id}
@@ -300,7 +300,7 @@ export const AIAssistant: React.FC = () => {
                                             "p-3 rounded-2xl text-sm shadow-sm whitespace-pre-wrap break-words",
                                             msg.sender === 'user'
                                                 ? "bg-blue-600 text-white rounded-tr-none"
-                                                : "bg-white text-gray-800 border border-gray-100 rounded-tl-none"
+                                                : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-700 rounded-tl-none"
                                         )}>
                                             {msg.text}
                                         </div>
@@ -312,7 +312,7 @@ export const AIAssistant: React.FC = () => {
                                                     <button
                                                         key={idx}
                                                         onClick={() => handleSuggestionClick(action)}
-                                                        className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-100 hover:bg-purple-100 transition-colors"
+                                                        className="text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full border border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
                                                     >
                                                         {action}
                                                     </button>
@@ -332,7 +332,7 @@ export const AIAssistant: React.FC = () => {
                                     <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
                                         <Bot size={16} />
                                     </div>
-                                    <div className="bg-white p-3 rounded-2xl rounded-tl-none border border-gray-100 shadow-sm flex gap-1 items-center">
+                                    <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl rounded-tl-none border border-gray-100 dark:border-gray-700 shadow-sm flex gap-1 items-center">
                                         <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                         <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                                         <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -344,7 +344,7 @@ export const AIAssistant: React.FC = () => {
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-4 bg-white border-t border-gray-100 shrink-0">
+                    <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shrink-0">
                         <div className="flex gap-2">
                             <input
                                 type="text"
@@ -352,7 +352,7 @@ export const AIAssistant: React.FC = () => {
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyPress}
                                 placeholder="Zapytaj o grafik..."
-                                className="flex-1 p-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="flex-1 p-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                                 disabled={isTyping}
                             />
                             <button

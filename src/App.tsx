@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Users, Download, AlertTriangle, CheckCircle, BarChart3, Clock, Settings, Save, RefreshCw, AlertCircle as AlertIcon, User } from 'lucide-react';
+import { Calendar, Users, Download, AlertTriangle, CheckCircle, BarChart3, Clock, Settings, Save, RefreshCw, AlertCircle as AlertIcon, User, Sun, Moon } from 'lucide-react';
 import clsx from 'clsx';
+import { useThemeStore } from './store/useThemeStore';
+import { useEffect } from 'react';
 import { useScheduleStore } from './store/useScheduleStore';
 import { useChatStore } from './store/useChatStore';
 import { ScheduleGrid } from './components/ScheduleGrid';
@@ -18,9 +20,21 @@ import { getHolidays } from './utils/holidays';
 function App() {
   const { schedule, setMonth } = useScheduleStore();
   const { sessions } = useChatStore();
+  const { theme, toggleTheme } = useThemeStore();
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [theme]);
+
   const [isEmployeeManagerOpen, setIsEmployeeManagerOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'schedule' | 'dashboard' | 'timeline' | 'employee' | 'comparison' | 'config'>('schedule');
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [showLoadConfirmation, setShowLoadConfirmation] = useState(false);
 
   // Sync State
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -71,7 +85,8 @@ function App() {
     setShowSaveConfirmation(true);
   };
 
-  const handleSyncPull = async () => {
+  const executeSyncPull = async () => {
+    setShowLoadConfirmation(false);
     setSyncStatus('loading');
     setSyncMessage('Wczytywanie...');
     try {
@@ -119,6 +134,10 @@ function App() {
     }
   };
 
+  const handleSyncPull = () => {
+    setShowLoadConfirmation(true);
+  };
+
   const handlePrevMonth = () => {
     if (schedule.month === 1) {
       setMonth(12, schedule.year - 1);
@@ -158,7 +177,7 @@ function App() {
   }, [schedule.year, schedule.month]);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
       {/* Save Confirmation Modal */}
       {showSaveConfirmation && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -195,38 +214,74 @@ function App() {
         </div>
       )}
 
+      {/* Load Confirmation Modal */}
+      {showLoadConfirmation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400 mb-4">
+              <AlertTriangle size={32} />
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Potwierdzenie wczytania</h3>
+            </div>
+
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Czy na pewno chcesz wczytać grafik z serwera?
+              <br /><br />
+              <strong className="text-gray-900 dark:text-white">Ta operacja nadpisze Twoją obecną pracę!</strong>
+              <br />
+              Upewnij się, że zapisałeś wszystkie zmiany przed wczytaniem danych z serwera.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowLoadConfirmation(false)}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={executeSyncPull}
+                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <RefreshCw size={18} />
+                Tak, wczytaj
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isEmployeeManagerOpen && (
         <EmployeeManager onClose={() => setIsEmployeeManagerOpen(false)} />
       )}
       {/* Header */}
-      <header className="bg-white shadow-sm z-20 relative">
+      <header className="bg-white dark:bg-slate-900 shadow-sm z-20 relative transition-colors duration-200 border-b dark:border-slate-800">
         <div className="max-w-[1920px] mx-auto px-4 py-4 md:px-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg shadow-lg">
+              <div className="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-900/20">
                 <Calendar className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Harmonogram Master</h1>
-                <p className="text-xs text-gray-500 font-medium">System zarządzania czasem pracy</p>
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white leading-tight">Harmonogram Master</h1>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">System zarządzania czasem pracy</p>
               </div>
             </div>
 
             {/* Month Navigation */}
-            <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200 self-start md:self-center">
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 self-start md:self-center">
               <button
                 onClick={handlePrevMonth}
-                className="p-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"
+                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all text-slate-600 dark:text-slate-300 shadow-sm hover:shadow"
                 title="Poprzedni miesiąc"
               >
                 &lt;
               </button>
-              <span className="text-sm font-semibold text-gray-700 min-w-[120px] text-center">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-[120px] text-center">
                 {monthNames[schedule.month - 1]} {schedule.year}
               </span>
               <button
                 onClick={handleNextMonth}
-                className="p-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"
+                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all text-slate-600 dark:text-slate-300 shadow-sm hover:shadow"
                 title="Następny miesiąc"
               >
                 &gt;
@@ -234,6 +289,14 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 self-end md:self-auto">
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent dark:border-slate-700"
+                title={theme === 'dark' ? 'Włącz tryb jasny' : 'Włącz tryb ciemny'}
+              >
+                {theme === 'dark' ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-slate-600" />}
+              </button>
               {/* Sync Status Indicator */}
               {syncMessage && (
                 <div className={clsx(
@@ -254,7 +317,7 @@ function App() {
                 disabled={syncStatus === 'loading'}
                 className={clsx(
                   "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm",
-                  "bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                  "bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 shadow-green-900/20"
                 )}
                 title="Zapisz zmiany na serwerze"
               >
@@ -267,7 +330,7 @@ function App() {
                 disabled={syncStatus === 'loading'}
                 className={clsx(
                   "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm",
-                  "bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
+                  "bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50 shadow-slate-900/20"
                 )}
                 title="Wczytaj grafik z serwera"
               >
@@ -277,7 +340,7 @@ function App() {
 
               <button
                 onClick={() => setIsEmployeeManagerOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-transparent dark:border-slate-700"
               >
                 <Users size={16} />
                 <span className="hidden sm:inline">Pracownicy</span>
@@ -299,8 +362,8 @@ function App() {
               className={clsx(
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
                 currentView === 'schedule'
-                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >
               <Calendar size={16} />
@@ -311,8 +374,8 @@ function App() {
               className={clsx(
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
                 currentView === 'dashboard'
-                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >
               <BarChart3 size={16} />
@@ -323,8 +386,8 @@ function App() {
               className={clsx(
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
                 currentView === 'timeline'
-                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >
               <Clock size={16} />
@@ -335,8 +398,8 @@ function App() {
               className={clsx(
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
                 currentView === 'employee'
-                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >
               <User size={16} />
@@ -347,8 +410,8 @@ function App() {
               className={clsx(
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
                 currentView === 'comparison'
-                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >
               <Users size={16} />
@@ -359,8 +422,8 @@ function App() {
               className={clsx(
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
                 currentView === 'config'
-                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >
               <Settings size={16} />

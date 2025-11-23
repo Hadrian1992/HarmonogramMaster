@@ -126,18 +126,18 @@ export const ConfigView: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* AI Settings */}
-                <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 mb-2">
                         <Cpu className="text-purple-600" />
-                        <h2 className="text-xl font-bold text-gray-900">Ustawienia AI</h2>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ustawienia AI</h2>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Model AI</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model AI</label>
                         <select
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="w-full p-2 border dark:border-gray-600 rounded focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
                             <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
                             <option value="google/gemini-2.0-flash-exp:free">Google Gemini 2.0 Flash (Free)</option>
@@ -148,13 +148,13 @@ export const ConfigView: React.FC = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Klucz API (OpenRouter)</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Klucz API (OpenRouter)</label>
                         <input
                             type="password"
                             value={apiKey}
                             onChange={(e) => setApiKey(e.target.value)}
                             placeholder="sk-or-..."
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="w-full p-2 border dark:border-gray-600 rounded focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         />
                         <p className="text-xs text-gray-500 mt-1">Klucz jest zapisywany lokalnie w przeglądarce.</p>
                     </div>
@@ -168,50 +168,50 @@ export const ConfigView: React.FC = () => {
                 </div>
 
                 {/* Staffing Rules */}
-                <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 mb-2">
                         <Shield className="text-blue-600" />
-                        <h2 className="text-xl font-bold text-gray-900">Strażnik Obsady</h2>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Strażnik Obsady</h2>
                     </div>
-                    <p className="text-sm text-gray-600">Zdefiniuj minimalną liczbę osób na zmianie. AI będzie ostrzegać o naruszeniach.</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Zdefiniuj minimalną liczbę osób na zmianie. AI będzie ostrzegać o naruszeniach.</p>
 
                     <div className="grid grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1">Rano (7-15)</label>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Rano (7-15)</label>
                             <input
                                 type="number"
                                 value={minStaffMorning}
                                 onChange={(e) => setMinStaffMorning(Number(e.target.value))}
-                                className="w-full p-2 border rounded text-center"
+                                className="w-full p-2 border dark:border-gray-600 rounded text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1">Popołudnie (15-20)</label>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Popołudnie (15-20)</label>
                             <input
                                 type="number"
                                 value={minStaffEvening}
                                 onChange={(e) => setMinStaffEvening(Number(e.target.value))}
-                                className="w-full p-2 border rounded text-center"
+                                className="w-full p-2 border dark:border-gray-600 rounded text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1">Noc (20-8)</label>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Noc (20-8)</label>
                             <input
                                 type="number"
                                 value={minStaffNight}
                                 onChange={(e) => setMinStaffNight(Number(e.target.value))}
-                                className="w-full p-2 border rounded text-center"
+                                className="w-full p-2 border dark:border-gray-600 rounded text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Dodatkowe Reguły (Dla AI)</label>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Dodatkowe Reguły (Dla AI)</label>
                         <textarea
                             value={customRules}
                             onChange={(e) => setCustomRules(e.target.value)}
                             placeholder="Np. Pamiętaj, że w piątki musi być Kasia. Nie łącz zmian nocnych z porannymi."
-                            className="w-full p-2 border rounded text-sm h-24 resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full p-2 border dark:border-gray-600 rounded text-sm h-24 resize-none focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                         />
                     </div>
 
@@ -230,12 +230,12 @@ export const ConfigView: React.FC = () => {
             </div>
 
             {/* Server Sync */}
-            <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                     <Server className="text-green-600" />
-                    <h2 className="text-xl font-bold text-gray-900">Synchronizacja i Kopia Zapasowa</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Synchronizacja i Kopia Zapasowa</h2>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                     Zapisz cały stan aplikacji na serwerze, aby mieć do niego dostęp z innych urządzeń (np. telefonu).
                     Wymaga uruchomionego `node server.js`.
                 </p>
@@ -245,7 +245,7 @@ export const ConfigView: React.FC = () => {
                         type="text"
                         value={serverUrl}
                         onChange={(e) => setServerUrl(e.target.value)}
-                        className="flex-1 p-2 border rounded text-sm font-mono"
+                        className="flex-1 p-2 border dark:border-gray-600 rounded text-sm font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         placeholder="http://localhost:3001"
                     />
 
@@ -268,8 +268,8 @@ export const ConfigView: React.FC = () => {
 
                 {/* Status Message */}
                 {syncMessage && (
-                    <div className={`p-3 rounded flex items-center gap-2 ${syncStatus === 'success' ? 'bg-green-100 text-green-800' :
-                        syncStatus === 'error' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                    <div className={`p-3 rounded flex items-center gap-2 ${syncStatus === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                        syncStatus === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                         }`}>
                         {syncStatus === 'success' ? <CheckCircle size={18} /> :
                             syncStatus === 'error' ? <AlertCircle size={18} /> : <RefreshCw size={18} className="animate-spin" />}

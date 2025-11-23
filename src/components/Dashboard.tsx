@@ -31,9 +31,9 @@ export const Dashboard: React.FC = () => {
 
     const getAlertColor = (type: string) => {
         switch (type) {
-            case 'error': return 'bg-red-50 border-red-200';
-            case 'warning': return 'bg-yellow-50 border-yellow-200';
-            default: return 'bg-blue-50 border-blue-200';
+            case 'error': return 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800';
+            case 'warning': return 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800';
+            default: return 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800';
         }
     };
 
@@ -47,41 +47,41 @@ export const Dashboard: React.FC = () => {
 
             {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-lg p-5 shadow border border-gray-200">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 shadow border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600">Pracownicy</p>
-                            <p className="text-2xl font-bold text-gray-900">{schedule.employees.length}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Pracownicy</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{schedule.employees.length}</p>
                         </div>
                         <Users className="text-blue-500" size={32} />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-5 shadow border border-gray-200">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 shadow border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600">Suma godzin</p>
-                            <p className="text-2xl font-bold text-gray-900">{Math.round(totalHours)}h</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Suma godzin</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(totalHours)}h</p>
                         </div>
                         <Clock className="text-green-500" size={32} />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-5 shadow border border-gray-200">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 shadow border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600">Średnia h/osoba</p>
-                            <p className="text-2xl font-bold text-gray-900">{Math.round(avgHours)}h</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Średnia h/osoba</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(avgHours)}h</p>
                         </div>
                         <TrendingUp className="text-purple-500" size={32} />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-5 shadow border border-gray-200">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 shadow border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600">Zmiany nocne</p>
-                            <p className="text-2xl font-bold text-gray-900">{totalNightShifts}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Zmiany nocne</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalNightShifts}</p>
                         </div>
                         <Calendar className="text-indigo-500" size={32} />
                     </div>
@@ -90,8 +90,8 @@ export const Dashboard: React.FC = () => {
 
             {/* Alerts */}
             {alerts.length > 0 && (
-                <div className="bg-white rounded-lg p-6 shadow border border-gray-200">
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow border border-gray-200 dark:border-gray-700">
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
                         <AlertTriangle className="text-yellow-500" />
                         Alerty i Ostrzeżenia ({alerts.length})
                     </h2>
