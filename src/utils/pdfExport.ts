@@ -21,7 +21,7 @@ export const exportToPDF = (schedule: Schedule) => {
 
     // ===== NAGŁÓWEK =====
     doc.setFontSize(20);
-    doc.setFont('Roboto', 'bold');
+    doc.setFont('Roboto', 'normal');
     doc.text('HARMONOGRAM PRACY', 210, 15, { align: 'center' });
 
     doc.setFontSize(14);
@@ -61,7 +61,7 @@ export const exportToPDF = (schedule: Schedule) => {
             fillColor: (isWeekend(day) ? [180, 140, 180] : [100, 160, 220]) as [number, number, number],
             textColor: 255,
             fontSize: 9,
-            fontStyle: 'bold' as const,
+            fontStyle: 'normal' as const,
             cellPadding: 1,
             lineWidth: 0.1,
             lineColor: [80, 80, 80] as [number, number, number]
@@ -81,7 +81,7 @@ export const exportToPDF = (schedule: Schedule) => {
                 fillColor: (isWeekend(day) ? [200, 160, 200] : [130, 190, 240]) as [number, number, number],
                 textColor: (isWeekend(day) ? 255 : 0) as number,
                 fontSize: 8,
-                fontStyle: 'bold' as const,
+                fontStyle: 'normal' as const,
                 cellPadding: 0.5,
                 lineWidth: 0.1,
                 lineColor: [80, 80, 80] as [number, number, number]
@@ -172,21 +172,21 @@ export const exportToPDF = (schedule: Schedule) => {
         headStyles: {
             fillColor: [66, 139, 202] as [number, number, number],
             textColor: 255,
-            fontStyle: 'bold' as const,
+            fontStyle: 'normal' as const,
             halign: 'center' as const,
             valign: 'middle' as const
         },
         footStyles: {
             fillColor: [220, 220, 220] as [number, number, number],
             textColor: 0,
-            fontStyle: 'bold' as const,
+            fontStyle: 'normal' as const,
             halign: 'center' as const
         },
         columnStyles: {
             0: {
                 halign: 'left' as const,
                 cellWidth: 35,
-                fontStyle: 'bold' as const,
+                fontStyle: 'normal' as const,
                 fillColor: [250, 250, 250] as [number, number, number]
             },
             ...Object.fromEntries(
@@ -197,7 +197,7 @@ export const exportToPDF = (schedule: Schedule) => {
             ),
             [daysInMonth + 1]: { cellWidth: 12, fillColor: [230, 240, 255] as [number, number, number] },
             [daysInMonth + 2]: { cellWidth: 12, fillColor: [240, 230, 255] as [number, number, number] },
-            [daysInMonth + 3]: { cellWidth: 14, fillColor: [255, 250, 220] as [number, number, number], fontStyle: 'bold' as const }
+            [daysInMonth + 3]: { cellWidth: 14, fillColor: [255, 250, 220] as [number, number, number], fontStyle: 'normal' as const }
         },
         didParseCell: (data) => {
             if (data.section === 'body' && data.column.index > 0 && data.column.index <= daysInMonth) {

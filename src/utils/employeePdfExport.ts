@@ -49,7 +49,7 @@ export function exportEmployeePDF(
 
     // ===== NAGŁÓWEK =====
     doc.setFontSize(16);
-    doc.setFont('Roboto', 'bold');
+    doc.setFont('Roboto', 'normal');
     doc.text('Harmonogram Pracy', doc.internal.pageSize.getWidth() / 2, 12, { align: 'center' });
 
     doc.setFontSize(11);
@@ -85,7 +85,7 @@ export function exportEmployeePDF(
 
     // Nagłówek - nazwy dni
     doc.setFontSize(9);
-    doc.setFont('Roboto', 'bold');
+    doc.setFont('Roboto', 'normal');
     doc.setTextColor(255, 255, 255);
 
     for (let dayCol = 0; dayCol < 7; dayCol++) {
