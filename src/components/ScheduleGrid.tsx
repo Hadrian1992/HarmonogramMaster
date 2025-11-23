@@ -649,11 +649,11 @@ export const ScheduleGrid: React.FC = () => {
                 </div>
             )}
 
-            <div className="overflow-x-auto border rounded-lg shadow bg-white">
+            <div className="overflow-x-auto max-w-full border rounded-lg shadow bg-white">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 border-r">
+                            <th className="px-2 py-2 md:px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 border-r min-w-[100px] md:min-w-0">
                                 Pracownik
                             </th>
                             {days.map((day, dayIndex) => {
@@ -761,7 +761,7 @@ export const ScheduleGrid: React.FC = () => {
                                             searchQuery && "ring-2 ring-blue-400 bg-blue-50/50"
                                         )}
                                     >
-                                        <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 sticky left-0 bg-white z-10 border-r">
+                                        <td className="px-2 py-2 md:px-3 whitespace-nowrap font-medium text-gray-900 sticky left-0 bg-white z-10 border-r min-w-[100px] md:min-w-0 text-xs md:text-sm">
                                             {emp.name}
                                         </td>
                                         {days.map((day, dayIndex) => {

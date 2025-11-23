@@ -38,9 +38,9 @@ export const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 p-6 max-w-7xl mx-auto">
+        <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-6 text-white shadow-lg">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-4 md:p-6 text-white shadow-lg">
                 <h1 className="text-3xl font-bold mb-2">Dashboard Statystyk</h1>
                 <p className="text-blue-100">{monthName}</p>
             </div>

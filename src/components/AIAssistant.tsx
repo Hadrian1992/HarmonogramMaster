@@ -11,7 +11,7 @@ export const AIAssistant: React.FC = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
-    const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai_api_key') || '');
+    const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai_api_key') || import.meta.env.VITE_OPENAI_API_KEY || '');
     const [model, setModel] = useState(() => localStorage.getItem('openai_model') || 'google/gemini-2.0-flash-exp:free');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);

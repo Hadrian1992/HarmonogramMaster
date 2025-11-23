@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Users, Download, AlertTriangle, CheckCircle, BarChart3, Clock, Settings, Save, RefreshCw, AlertCircle as AlertIcon } from 'lucide-react';
+import { Calendar, Users, Download, AlertTriangle, CheckCircle, BarChart3, Clock, Settings, Save, RefreshCw, AlertCircle as AlertIcon, User } from 'lucide-react';
+import clsx from 'clsx';
 import { useScheduleStore } from './store/useScheduleStore';
 import { useChatStore } from './store/useChatStore';
 import { ScheduleGrid } from './components/ScheduleGrid';
@@ -19,6 +20,7 @@ function App() {
   const { sessions } = useChatStore();
   const [isEmployeeManagerOpen, setIsEmployeeManagerOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'schedule' | 'dashboard' | 'timeline' | 'employee' | 'comparison' | 'config'>('schedule');
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   // Sync State
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -29,7 +31,8 @@ function App() {
     exportToExcel(schedule);
   };
 
-  const handleSyncPush = async () => {
+  const executeSyncPush = async () => {
+    setShowSaveConfirmation(false);
     setSyncStatus('loading');
     setSyncMessage('Zapisywanie...');
     try {
@@ -62,6 +65,10 @@ function App() {
         setSyncMessage('');
       }, 5000);
     }
+  };
+
+  const handleSyncPush = () => {
+    setShowSaveConfirmation(true);
   };
 
   const handleSyncPull = async () => {
@@ -151,154 +158,220 @@ function App() {
   }, [schedule.year, schedule.month]);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* Save Confirmation Modal */}
+      {showSaveConfirmation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+            <div className="flex items-center gap-3 text-amber-600 mb-4">
+              <AlertTriangle size={32} />
+              <h3 className="text-xl font-bold text-gray-900">Potwierdzenie zapisu</h3>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Czy na pewno chcesz zapisać grafik na serwerze?
+              <br /><br />
+              <strong className="text-gray-900">Ta operacja nadpisze obecne dane na serwerze.</strong>
+              <br />
+              Upewnij się, że nie nadpisujesz pracy innych osób pustym grafikiem.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowSaveConfirmation(false)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={executeSyncPush}
+                className="px-4 py-2 bg-amber-600 text-white hover:bg-amber-700 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <Save size={18} />
+                Tak, zapisz
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isEmployeeManagerOpen && (
         <EmployeeManager onClose={() => setIsEmployeeManagerOpen(false)} />
       )}
-      <header className="mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Calendar className="w-8 h-8 text-blue-600" />
-              HarmonogramMaster
-            </h1>
-            <div className="flex items-center gap-4 mt-2">
-              <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-200 rounded">
-                &lt; Poprzedni
+      {/* Header */}
+      <header className="bg-white shadow-sm z-20 relative">
+        <div className="max-w-[1920px] mx-auto px-4 py-4 md:px-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 p-2 rounded-lg shadow-lg">
+                <Calendar className="text-white" size={24} />
+              </div>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Harmonogram Master</h1>
+                <p className="text-xs text-gray-500 font-medium">System zarządzania czasem pracy</p>
+              </div>
+            </div>
+
+            {/* Month Navigation */}
+            <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200 self-start md:self-center">
+              <button
+                onClick={handlePrevMonth}
+                className="p-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"
+                title="Poprzedni miesiąc"
+              >
+                &lt;
               </button>
-              <span className="text-xl font-semibold text-gray-700 min-w-[200px] text-center">
+              <span className="text-sm font-semibold text-gray-700 min-w-[120px] text-center">
                 {monthNames[schedule.month - 1]} {schedule.year}
               </span>
-              <button onClick={handleNextMonth} className="p-1 hover:bg-gray-200 rounded">
-                Następny &gt;
+              <button
+                onClick={handleNextMonth}
+                className="p-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"
+                title="Następny miesiąc"
+              >
+                &gt;
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 self-end md:self-auto">
+              {/* Sync Status Indicator */}
+              {syncMessage && (
+                <div className={clsx(
+                  "text-xs px-2 py-1 rounded-full flex items-center gap-1 animate-fade-in",
+                  syncStatus === 'success' ? "bg-green-100 text-green-700" :
+                    syncStatus === 'error' ? "bg-red-100 text-red-700" :
+                      "bg-blue-100 text-blue-700"
+                )}>
+                  {syncStatus === 'loading' && <RefreshCw size={10} className="animate-spin" />}
+                  {syncStatus === 'success' && <CheckCircle size={10} />}
+                  {syncStatus === 'error' && <AlertIcon size={10} />}
+                  {syncMessage}
+                </div>
+              )}
+
+              <button
+                onClick={handleSyncPush}
+                disabled={syncStatus === 'loading'}
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm",
+                  "bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                )}
+                title="Zapisz zmiany na serwerze"
+              >
+                {syncStatus === 'loading' ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                <span className="hidden sm:inline">Zapisz Grafik</span>
+              </button>
+
+              <button
+                onClick={handleSyncPull}
+                disabled={syncStatus === 'loading'}
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm",
+                  "bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
+                )}
+                title="Wczytaj grafik z serwera"
+              >
+                <RefreshCw size={16} className={clsx(syncStatus === 'loading' && "animate-spin")} />
+                <span className="hidden sm:inline">Wczytaj Grafik</span>
+              </button>
+
+              <button
+                onClick={() => setIsEmployeeManagerOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <Users size={16} />
+                <span className="hidden sm:inline">Pracownicy</span>
+              </button>
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">Eksportuj do Excela</span>
               </button>
             </div>
           </div>
-          <div className="flex gap-4">
-            <button
-              onClick={() => setIsEmployeeManagerOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm hover:bg-gray-50 text-gray-700"
-            >
-              <Users className="w-4 h-4" />
-              Pracownicy
-            </button>
-            <button
-              onClick={handleSyncPush}
-              disabled={syncStatus === 'loading'}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
-            >
-              {syncStatus === 'loading' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Zapisz Grafik
-            </button>
-            <button
-              onClick={handleSyncPull}
-              disabled={syncStatus === 'loading'}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg shadow-sm hover:bg-gray-700 disabled:opacity-50 transition-colors"
-            >
-              {syncStatus === 'loading' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              Wczytaj Grafik
-            </button>
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700"
-            >
-              <Download className="w-4 h-4" />
-              Eksportuj do Excela
-            </button>
-            {/* Removed PDF Report button */}
-          </div>
 
-          {/* Sync Status Message */}
-          {syncMessage && (
-            <div className={`mt-3 px-3 py-2 rounded text-sm flex items-center gap-2 ${syncStatus === 'success' ? 'bg-green-100 text-green-800' :
-              syncStatus === 'error' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-              }`}>
-              {syncStatus === 'success' ? <CheckCircle size={16} /> :
-                syncStatus === 'error' ? <AlertIcon size={16} /> :
-                  <RefreshCw size={16} className="animate-spin" />}
-              {syncMessage}
-            </div>
-          )}
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex gap-2 border-b border-gray-300 mt-4">
-          <button
-            onClick={() => setCurrentView('schedule')}
-            className={`px-6 py-3 font-medium transition-colors border-b-2 ${currentView === 'schedule'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            <div className="flex items-center gap-2">
-              <Calendar size={18} />
+          {/* Navigation Tabs - Scrollable on mobile */}
+          <div className="mt-6 flex overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 scrollbar-hide gap-2">
+            <button
+              onClick={() => setCurrentView('schedule')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'schedule'
+                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <Calendar size={16} />
               Grafik
-            </div>
-          </button>
-          <button
-            onClick={() => setCurrentView('dashboard')}
-            className={`px-6 py-3 font-medium transition-colors border-b-2 ${currentView === 'dashboard'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            <div className="flex items-center gap-2">
-              <BarChart3 size={18} />
-              Statystyki
-            </div>
-          </button>
-          <button
-            onClick={() => setCurrentView('timeline')}
-            className={`px-6 py-3 font-medium transition-colors border-b-2 ${currentView === 'timeline'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            <div className="flex items-center gap-2">
-              <Clock size={18} />
-              Timeline
-            </div>
-          </button>
-          <button
-            onClick={() => setCurrentView('employee')}
-            className={`px-6 py-3 font-medium transition-colors border-b-2 ${currentView === 'employee'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            <div className="flex items-center gap-2">
-              <Users size={18} />
-              Widok Pracownika
-            </div>
-          </button>
-          <button
-            onClick={() => setCurrentView('comparison')}
-            className={`px-6 py-3 font-medium transition-colors border-b-2 ${currentView === 'comparison'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            <div className="flex items-center gap-2">
-              <BarChart3 size={18} />
+            </button>
+            <button
+              onClick={() => setCurrentView('dashboard')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'dashboard'
+                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <BarChart3 size={16} />
+              Dashboard
+            </button>
+            <button
+              onClick={() => setCurrentView('timeline')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'timeline'
+                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <Clock size={16} />
+              Oś czasu
+            </button>
+            <button
+              onClick={() => setCurrentView('employee')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'employee'
+                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <User size={16} />
+              Widok pracownika
+            </button>
+            <button
+              onClick={() => setCurrentView('comparison')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'comparison'
+                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <Users size={16} />
               Porównanie
-            </div>
-          </button>
-          <button
-            onClick={() => setCurrentView('config')}
-            className={`px-6 py-3 font-medium transition-colors border-b-2 ${currentView === 'config'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            <div className="flex items-center gap-2">
-              <Settings size={18} />
+            </button>
+            <button
+              onClick={() => setCurrentView('config')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'config'
+                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <Settings size={16} />
               Konfiguracja
-            </div>
-          </button>
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="space-y-8">
+      {/* Main Content */}
+      <main className="flex-1 max-w-[1920px] w-full mx-auto px-2 md:px-6 py-4 md:py-6 overflow-hidden flex flex-col">
         {currentView === 'schedule' ? (
           <>
             <ScheduleGrid />
