@@ -15,6 +15,25 @@ export const AIAssistant: React.FC = () => {
     const [model, setModel] = useState(() => localStorage.getItem('openai_model') || 'google/gemini-2.0-flash-exp:free');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    // >>> WKLEJ CAŁY TEN BLOK PONIŻEJ: <<<
+    useEffect(() => {
+        const handleStorageChange = () => {
+            const newKey = localStorage.getItem('openai_api_key');
+            const newModel = localStorage.getItem('openai_model');
+            // Tylko jeśli faktycznie się zmieniło, żeby nie robić pętli
+            if (newKey !== apiKey) setApiKey(newKey || '');
+            if (newModel !== model) setModel(newModel || 'google/gemini-2.0-flash-exp:free');
+        };
+
+        // Nasłuchuj zmian
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('local-storage-update', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('local-storage-update', handleStorageChange);
+        };
+    }, [apiKey, model]);
     const { schedule, staffingRules } = useScheduleStore();
     const { sessions, currentSessionId, addSession, deleteSession, selectSession, addMessage } = useChatStore();
 

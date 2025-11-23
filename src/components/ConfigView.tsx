@@ -34,6 +34,7 @@ export const ConfigView: React.FC = () => {
         localStorage.setItem('openai_model', model);
         setSyncStatus('success');
         setSyncMessage('Ustawienia AI zapisane lokalnie.');
+        window.dispatchEvent(new Event('local-storage-update'));
         setTimeout(() => setSyncStatus('idle'), 3000);
     };
 
@@ -103,6 +104,7 @@ export const ConfigView: React.FC = () => {
                     if (rules.customRules) setCustomRules(rules.customRules);
                 }
             }
+            window.dispatchEvent(new Event('local-storage-update'));
             setSyncStatus('success');
             setSyncMessage('Dane pomyślnie pobrane z serwera!');
         } catch (error) {
