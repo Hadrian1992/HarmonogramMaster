@@ -27,7 +27,11 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 // Middleware
 app.use(cors({
-    origin: 'http://localhost:5173', // Vite default port
+    origin: [
+        'http://localhost:5173',       // Dev lokalny
+        'http://localhost:4173',       // Preview lokalny
+        'https://bidulgrafik.pl'       // <--- TWOJA DOMENA (bez ukośnika na końcu)
+    ],
     credentials: true // Allow cookies
 }));
 app.use(bodyParser.json({ limit: '50mb' }));
