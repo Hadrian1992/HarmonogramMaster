@@ -55,24 +55,35 @@ export const ScheduleGrid: React.FC = () => {
     const handleSendSchedules = async () => {
         setSending(true);
         setSendResult(null);
+
+        const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
         try {
-            const response = await fetch('/api/send-schedules', {
+            // Endpoint z Twojego backendu to /api/send-schedules
+            const response = await fetch(`${serverUrl}/api/send-schedules`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sendMain, sendIndividual })
+                credentials: 'include', // <--- TO NAPRAWIA BŁĄD "Unauthorized"
+                body: JSON.stringify({
+                    sendMain,
+                    sendIndividual
+                })
             });
+
             const data = await response.json();
-            if (data.success) {
+
+            if (response.ok && data.success) {
                 setSendResult({ sent: data.sent, errors: data.errors || [] });
                 if (data.errors && data.errors.length === 0) {
                     setTimeout(() => setShowSendModal(false), 2000);
                 }
             } else {
-                alert('Błąd wysyłania: ' + data.error);
+                // Obsługa błędów z backendu (np. 404 No schedule found)
+                alert('Błąd wysyłania: ' + (data.error || 'Wystąpił nieznany błąd'));
             }
         } catch (error) {
             console.error('Send error:', error);
-            alert('Wystąpił błąd podczas wysyłania.');
+            alert('Wystąpił błąd połączenia z serwerem wysyłkowym.');
         } finally {
             setSending(false);
         }
