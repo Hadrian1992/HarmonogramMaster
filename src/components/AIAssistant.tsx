@@ -23,7 +23,7 @@ export const AIAssistant: React.FC = () => {
     useEffect(() => {
         const fetchModels = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/ai/models', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/models`, {
                     credentials: 'include'
                 });
                 if (response.ok) {

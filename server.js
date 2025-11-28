@@ -77,9 +77,9 @@ app.post('/api/login', (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false, // Set to true in production with HTTPS
-            sameSite: 'lax', // 'strict' might block localhost dev in some browsers, 'lax' is safer for dev
-            maxAge: 12 * 60 * 60 * 1000 // 12 hours
+            secure: true,          // ZMIEŃ NA TRUE (bo używasz Cloudflare HTTPS)
+            sameSite: 'none',      // ZMIEŃ NA NONE (to pozwala na cross-site cookie w HTTPS)
+            maxAge: 12 * 60 * 60 * 1000 // 12h
         });
 
         return res.json({ success: true });
@@ -90,8 +90,8 @@ app.post('/api/login', (req, res) => {
 app.post('/api/logout', (req, res) => {
     res.clearCookie('token', {
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax'
+        secure: true,      // <--- ZMIANA NA TRUE
+        sameSite: 'none'   // <--- ZMIANA NA NONE
     });
     res.json({ success: true });
 });
