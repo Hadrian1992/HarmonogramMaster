@@ -101,11 +101,19 @@ export async function askAI(
         };
     }
 
-    // Default response
-    return {
-        text: 'Przepraszam, nie zrozumiałem pytania. Mogę odpowiedzieć na pytania o:\n- Błędy w grafiku\n- Kto ma najwięcej godzin\n- Statystyki konkretnego pracownika\n- Urlopy',
-        suggestedActions: ['Pokaż błędy', 'Kto ma najwięcej godzin?', 'Podsumowanie urlopów']
-    };
+    // === TU BYŁ BŁĄD ===
+    // Jeśli kod doszedł tutaj, to znaczy, że pytanie nie pasowało do żadnego "if" powyżej.
+    // Zamiast wyświetlać "Nie zrozumiałem", wysyłamy pytanie do prawdziwego AI (OpenRouter).
+
+    console.log('Brak lokalnego dopasowania, przekazuję pytanie do OpenRouter...');
+
+    return await callOpenRouter(
+        question,
+        schedule,
+        apiKey || '',
+        model,
+        staffingRules
+    );
 }
 
 function getEmployeeTotalHours(employee: Employee): number {
@@ -123,7 +131,7 @@ async function callOpenRouter(
     question: string,
     schedule: Schedule,
     _apiKey: string, // Kept for signature compatibility, but ignored or used as fallback if needed (though backend handles it)
-    model: string = 'google/gemini-2.0-flash-exp:free',
+    model: string = 'google/gemini-3-pro-preview',
     staffingRules?: StaffingRules
 ): Promise<AIResponse> {
     const context = generateScheduleContext(schedule);
