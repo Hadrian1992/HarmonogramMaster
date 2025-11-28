@@ -16,13 +16,13 @@ import { PageHeader } from './ui/PageHeader';
 import { GlassButton } from './ui/GlassButton';
 
 export const ScheduleGrid: React.FC = () => {
-    const { schedule, updateShift, setManualContactHours, restoreSchedule, copyDay, pasteDay, copiedDay, templates: weeklyTemplates, saveTemplate, applyTemplate: applyWeeklyTemplate, deleteTemplate, colorSettings, setShiftColor, resetColors } = useScheduleStore();
+    const { schedule, updateShift, setManualContactHours, restoreSchedule, copyDay, pasteDay, copiedDay, templates: weeklyTemplates, saveTemplate, applyTemplate: applyWeeklyTemplate, deleteTemplate, colorSettings } = useScheduleStore();
     const [editingCell, setEditingCell] = useState<{ empId: string, date: string } | null>(null);
     const [editValue, setEditValue] = useState('');
     const [editingContactHours, setEditingContactHours] = useState<string | null>(null);
     const [contactHoursValue, setContactHoursValue] = useState('0');
     const [showTemplates, setShowTemplates] = useState(false);
-    const [showColorSettings, setShowColorSettings] = useState(false);
+    const [, setShowColorSettings] = useState(false);
     const [newTemplateName, setNewTemplateName] = useState('');
     const [templateSourceDate, setTemplateSourceDate] = useState('');
     const [templateTargetDate, setTemplateTargetDate] = useState('');

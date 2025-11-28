@@ -122,7 +122,7 @@ function getEmployeeTotalHours(employee: Employee): number {
 async function callOpenRouter(
     question: string,
     schedule: Schedule,
-    apiKey: string, // Kept for signature compatibility, but ignored or used as fallback if needed (though backend handles it)
+    _apiKey: string, // Kept for signature compatibility, but ignored or used as fallback if needed (though backend handles it)
     model: string = 'google/gemini-2.0-flash-exp:free',
     staffingRules?: StaffingRules
 ): Promise<AIResponse> {
