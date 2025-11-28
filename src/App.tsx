@@ -45,11 +45,11 @@ function MainLayout() {
   // Sync State
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [syncMessage, setSyncMessage] = useState('');
-  const serverUrl = 'http://localhost:3001';
+  const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:3001/api/logout', {
+      await fetch(`${serverUrl}/api/logout`, {
         method: 'POST',
         credentials: 'include' // CRITICAL: Required to allow the server to clear the cookie
       });

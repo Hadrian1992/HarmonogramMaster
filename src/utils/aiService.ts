@@ -163,7 +163,7 @@ ZASADY ODPOWIEDZI:
         // Use backend proxy with GDPR Anonymization support
         const employeeNames = schedule.employees.map(e => e.name);
 
-        const response = await fetch('http://localhost:3001/api/ai/chat', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -11,7 +11,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/me', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/verify`, {
                     credentials: 'include'
                 });
 
