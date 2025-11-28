@@ -101,6 +101,12 @@ app.get('/api/me', authenticateCookie, (req, res) => {
     res.json({ user: req.user });
 });
 
+// DODAJ TO PONIŻEJ:
+app.get('/api/verify', authenticateCookie, (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.json({ user: req.user });
+});
+
 // 2. AI ROUTES (Protected)
 app.get('/api/ai/models', authenticateCookie, async (req, res) => {
     try {
