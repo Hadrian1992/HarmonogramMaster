@@ -1,42 +1,33 @@
 import React, { useState } from 'react';
-import { Settings, Save, Server, Shield, Cpu, RefreshCw, CheckCircle, AlertCircle, Info as InfoIcon } from 'lucide-react';
+import {
+    Save, Server, Shield, RefreshCw, CheckCircle, AlertCircle, Info as InfoIcon,
+} from 'lucide-react';
 import { useScheduleStore } from '../store/useScheduleStore';
 import { useChatStore } from '../store/useChatStore';
+import { GlassCard } from './ui/GlassCard';
+import { PageHeader } from './ui/PageHeader';
+import { GlassButton } from './ui/GlassButton';
 
 export const ConfigView: React.FC = () => {
     const { schedule, staffingRules, updateStaffingRules } = useScheduleStore();
     const { sessions } = useChatStore();
-
-    const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai_api_key') || import.meta.env.VITE_OPENAI_API_KEY || '');
-    const [model, setModel] = useState(() => localStorage.getItem('openai_model') || 'google/gemini-2.0-flash-exp:free');
-
     const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [syncMessage, setSyncMessage] = useState('');
-
-    // 1. WAŻNE: Pusty adres! Dzięki temu telefon zadziała.
     const [serverUrl, setServerUrl] = useState('');
-
     const [minStaffMorning, setMinStaffMorning] = useState(staffingRules?.minStaffMorning || 2);
     const [minStaffEvening, setMinStaffEvening] = useState(staffingRules?.minStaffEvening || 1);
     const [minStaffNight, setMinStaffNight] = useState(staffingRules?.minStaffNight || 1);
     const [customRules, setCustomRules] = useState(staffingRules?.customRules || '');
 
     const handleSaveRules = () => {
-        updateStaffingRules({ minStaffMorning, minStaffEvening, minStaffNight, customRules });
+        updateStaffingRules({
+            minStaffMorning,
+            minStaffEvening,
+            minStaffNight,
+            customRules,
+        });
         setSyncStatus('success');
         setSyncMessage('Reguły obsady zapisane.');
-        setTimeout(() => setSyncStatus('idle'), 3000);
-    };
-
-    const handleSaveAISettings = () => {
-        localStorage.setItem('openai_api_key', apiKey);
-        localStorage.setItem('openai_model', model);
-        setSyncStatus('success');
-        setSyncMessage('Ustawienia AI zapisane lokalnie.');
-
-        // 2. WAŻNE: Powiadom Czat o zmianie klucza!
-        window.dispatchEvent(new Event('local-storage-update'));
-
         setTimeout(() => setSyncStatus('idle'), 3000);
     };
 
@@ -47,17 +38,14 @@ export const ConfigView: React.FC = () => {
                 schedule,
                 chatSessions: sessions,
                 settings: {
-                    apiKey,
-                    model,
-                    staffingRules: { minStaffMorning, minStaffEvening, minStaffNight, customRules }
+                    staffingRules: { minStaffMorning, minStaffEvening, minStaffNight, customRules },
                 },
-                timestamp: Date.now()
+                timestamp: Date.now(),
             };
-            // 3. Używamy samego '/api/data' (bez serverUrl)
             const response = await fetch('/api/data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
             });
             if (!response.ok) throw new Error('Błąd zapisu na serwerze');
             setSyncStatus('success');
@@ -72,23 +60,14 @@ export const ConfigView: React.FC = () => {
     const handleSyncPull = async () => {
         setSyncStatus('loading');
         try {
-            // 4. Tutaj też '/api/data'
             const response = await fetch('/api/data');
             if (!response.ok) throw new Error('Błąd pobierania z serwera');
             const data = await response.json();
-
             if (data.schedule) useScheduleStore.getState().restoreSchedule(data.schedule);
-            if (data.chatSessions && Array.isArray(data.chatSessions)) useChatStore.getState().restoreSessions(data.chatSessions);
-
+            if (data.chatSessions && Array.isArray(data.chatSessions)) {
+                useChatStore.getState().restoreSessions(data.chatSessions);
+            }
             if (data.settings) {
-                if (data.settings.apiKey) {
-                    setApiKey(data.settings.apiKey);
-                    localStorage.setItem('openai_api_key', data.settings.apiKey);
-                }
-                if (data.settings.model) {
-                    setModel(data.settings.model);
-                    localStorage.setItem('openai_model', data.settings.model);
-                }
                 if (data.settings.staffingRules) {
                     const rules = data.settings.staffingRules;
                     if (rules.minStaffMorning !== undefined) setMinStaffMorning(rules.minStaffMorning);
@@ -97,10 +76,7 @@ export const ConfigView: React.FC = () => {
                     if (rules.customRules) setCustomRules(rules.customRules);
                 }
             }
-
-            // 5. WAŻNE: Powiadom Czat o zmianie po pobraniu z serwera!
             window.dispatchEvent(new Event('local-storage-update'));
-
             setSyncStatus('success');
             setSyncMessage('Dane pomyślnie pobrane z serwera!');
         } catch (error) {
@@ -111,157 +87,142 @@ export const ConfigView: React.FC = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 p-6">
-            <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg p-6 text-white shadow-lg flex items-center gap-4">
-                <Settings size={32} className="text-blue-400" />
-                <div>
-                    <h1 className="text-2xl font-bold">Panel Konfiguracji</h1>
-                    <p className="text-slate-300">Zarządzaj AI, regułami placówki i synchronizacją</p>
-                </div>
-            </div>
+        <div className="p-4 md:p-6 max-w-[100vw] overflow-x-hidden min-h-screen">
+            <PageHeader
+                title="Panel Konfiguracji"
+                description="Zarządzaj AI, regułami placówki i synchronizacją"
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* AI Settings */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Cpu className="text-purple-600" />
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ustawienia AI</h2>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model AI</label>
-                        <select
-                            value={model}
-                            onChange={(e) => setModel(e.target.value)}
-                            className="w-full p-2 border dark:border-gray-600 rounded focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        >
-                            <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
-                            <option value="google/gemini-2.0-flash-exp:free">Google Gemini 2.0 Flash (Free)</option>
-                            <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
-                            <option value="qwen/qwen-2.5-vl-72b-instruct:free">Qwen 2.5 VL 72B (Free)</option>
-                            <option value="z-ai/glm-4.5-air:free">GLM 4.5 Air (Free)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Klucz API (OpenRouter)</label>
-                        <input
-                            type="password"
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                            placeholder="sk-or-..."
-                            className="w-full p-2 border dark:border-gray-600 rounded focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Klucz jest zapisywany lokalnie w przeglądarce.</p>
-                    </div>
-                    <button
-                        onClick={handleSaveAISettings}
-                        className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-                    >
-                        <Save size={18} /> Zapisz Ustawienia AI
-                    </button>
-                </div>
-
+            <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Staffing Rules */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Shield className="text-blue-600" />
+                <GlassCard className="space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                            <Shield size={24} />
+                        </div>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Strażnik Obsady</h2>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Zdefiniuj minimalną liczbę osób na zmianie. AI będzie ostrzegać o naruszeniach.</p>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Zdefiniuj minimalną liczbę osób na zmianie. AI będzie ostrzegać o naruszeniach.
+                    </p>
+
                     <div className="grid grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Rano (7-15)</label>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">Rano 7-15</label>
                             <input
                                 type="number"
                                 value={minStaffMorning}
-                                onChange={(e) => setMinStaffMorning(Number(e.target.value))}
-                                className="w-full p-2 border dark:border-gray-600 rounded text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                onChange={e => setMinStaffMorning(Number(e.target.value))}
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Popołudnie (15-20)</label>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">Popołudnie 15-20</label>
                             <input
                                 type="number"
                                 value={minStaffEvening}
-                                onChange={(e) => setMinStaffEvening(Number(e.target.value))}
-                                className="w-full p-2 border dark:border-gray-600 rounded text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                onChange={e => setMinStaffEvening(Number(e.target.value))}
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Noc (20-8)</label>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">Noc 20-8</label>
                             <input
                                 type="number"
                                 value={minStaffNight}
-                                onChange={(e) => setMinStaffNight(Number(e.target.value))}
-                                className="w-full p-2 border dark:border-gray-600 rounded text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                onChange={e => setMinStaffNight(Number(e.target.value))}
+                                className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             />
                         </div>
                     </div>
+
                     <div>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Dodatkowe Reguły (Dla AI)</label>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">Dodatkowe Reguły Dla AI</label>
                         <textarea
                             value={customRules}
-                            onChange={(e) => setCustomRules(e.target.value)}
+                            onChange={e => setCustomRules(e.target.value)}
                             placeholder="Np. Pamiętaj, że w piątki musi być Kasia. Nie łącz zmian nocnych z porannymi."
-                            className="w-full p-2 border dark:border-gray-600 rounded text-sm h-24 resize-none focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                            className="w-full p-3 border border-gray-200 dark:border-slate-700 rounded-xl text-sm h-32 resize-none focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all"
                         />
                     </div>
-                    <button
+
+                    <GlassButton
                         onClick={handleSaveRules}
-                        className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                        icon={Save}
+                        variant="primary"
+                        className="w-full justify-center"
                     >
-                        <Save size={18} /> Zapisz Reguły
-                    </button>
-                    <div className="p-3 bg-blue-50 text-blue-800 text-sm rounded border border-blue-200 flex items-start gap-2">
+                        Zapisz Reguły
+                    </GlassButton>
+
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-xs rounded-lg border border-blue-100 dark:border-blue-800/30 flex items-start gap-2">
                         <InfoIcon className="w-4 h-4 mt-0.5 shrink-0" />
                         <span>Te reguły są brane pod uwagę przez Asystenta AI przy analizie grafiku.</span>
                     </div>
-                </div>
-            </div>
+                </GlassCard>
 
-            {/* Server Sync */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                    <Server className="text-green-600" />
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Synchronizacja i Kopia Zapasowa</h2>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Zapisz cały stan aplikacji na serwerze, aby mieć do niego dostęp z innych urządzeń (np. telefonu).<br />
-                    Wymaga uruchomionego `node server.js`.
-                </p>
-                <div className="flex flex-col md:flex-row gap-4 items-center">
-                    {/* 6. Input jest pusty i opcjonalny (dla lokalnych testów), ale domyślnie używa /api */}
-                    <input
-                        type="text"
-                        value={serverUrl}
-                        onChange={(e) => setServerUrl(e.target.value)}
-                        className="flex-1 p-2 border dark:border-gray-600 rounded text-sm font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        placeholder="Adres serwera (zostaw puste dla biudulgrafik.pl)"
-                    />
-                    <button
-                        onClick={handleSyncPush}
-                        disabled={syncStatus === 'loading'}
-                        className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                    >
-                        <Save size={18} /> Wyślij na Serwer
-                    </button>
-                    <button
-                        onClick={handleSyncPull}
-                        disabled={syncStatus === 'loading'}
-                        className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                    >
-                        <RefreshCw size={18} /> Pobierz z Serwera
-                    </button>
-                </div>
-                {syncMessage && (
-                    <div className={`p-3 rounded flex items-center gap-2 ${syncStatus === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                        syncStatus === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-                            'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                        }`}>
-                        {syncStatus === 'success' ? <CheckCircle size={18} /> :
-                            syncStatus === 'error' ? <AlertCircle size={18} /> : <RefreshCw size={18} className="animate-spin" />}
-                        {syncMessage}
+                {/* Server Sync */}
+                <GlassCard className="space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
+                            <Server size={24} />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Synchronizacja</h2>
                     </div>
-                )}
+
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Zapisz cały stan aplikacji na serwerze, aby mieć do niego dostęp z innych urządzeń.<br />
+                        <span className="text-xs opacity-75">Wymaga uruchomionego <code>node server.js</code>.</span>
+                    </p>
+
+                    <div className="space-y-4">
+                        <input
+                            type="text"
+                            value={serverUrl}
+                            onChange={e => setServerUrl(e.target.value)}
+                            className="w-full p-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-mono bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                            placeholder="Adres serwera (zostaw puste dla domyślnego)"
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <GlassButton
+                                onClick={handleSyncPush}
+                                disabled={syncStatus === 'loading'}
+                                icon={Save}
+                                variant="secondary"
+                                className="justify-center bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-800"
+                            >
+                                Wyślij
+                            </GlassButton>
+                            <GlassButton
+                                onClick={handleSyncPull}
+                                disabled={syncStatus === 'loading'}
+                                icon={RefreshCw}
+                                variant="secondary"
+                                className="justify-center"
+                            >
+                                Pobierz
+                            </GlassButton>
+                        </div>
+                    </div>
+
+                    {syncMessage && (
+                        <div
+                            className={
+                                `p-3 rounded-lg flex items-center gap-2 text-sm font-medium animate-fade-in ${syncStatus === 'success'
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800'
+                                    : syncStatus === 'error'
+                                        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800'
+                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                                }`
+                            }
+                        >
+                            {syncStatus === 'success' ? <CheckCircle size={18} /> : syncStatus === 'error' ? <AlertCircle size={18} /> : <RefreshCw size={18} className="animate-spin" />}
+                            {syncMessage}
+                        </div>
+                    )}
+                </GlassCard>
             </div>
         </div>
     );

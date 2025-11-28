@@ -27,7 +27,8 @@ interface ScheduleState {
     templates: WeeklyTemplate[];
     colorSettings: ColorSettings;
     setMonth: (month: number, year: number) => void;
-    addEmployee: (name: string) => void;
+    addEmployee: (name: string, email?: string) => void;
+    updateEmployee: (id: string, name: string, email?: string) => void;
     updateShift: (employeeId: string, date: string, type: ShiftType, start?: number, end?: number, contactHours?: number) => void;
     removeEmployee: (id: string) => void;
     setManualContactHours: (employeeId: string, month: number, year: number, hours: number) => void;
@@ -84,13 +85,22 @@ export const useScheduleStore = create<ScheduleState>()(
                 schedule: { ...state.schedule, month, year }
             })),
 
-            addEmployee: (name) => set((state) => ({
+            addEmployee: (name, email) => set((state) => ({
                 schedule: {
                     ...state.schedule,
                     employees: [
                         ...state.schedule.employees,
-                        { id: Math.random().toString(36).substr(2, 9), name, shifts: {}, monthlyContactHours: {} }
+                        { id: Math.random().toString(36).substr(2, 9), name, email, shifts: {}, monthlyContactHours: {} }
                     ]
+                }
+            })),
+
+            updateEmployee: (id, name, email) => set((state) => ({
+                schedule: {
+                    ...state.schedule,
+                    employees: state.schedule.employees.map(emp =>
+                        emp.id === id ? { ...emp, name, email } : emp
+                    )
                 }
             })),
 

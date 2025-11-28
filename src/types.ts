@@ -29,6 +29,7 @@ export interface Employee {
     shifts: Record<string, Shift>; // Key is date YYYY-MM-DD
     monthlyContactHours?: Record<string, number>; // Key is YYYY-MM (month-year), value is manual contact hours
     preferences?: string; // Notes/Preferences for AI Advisor
+    email?: string; // Email address for notifications
 }
 
 export interface Schedule {

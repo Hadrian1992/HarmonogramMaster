@@ -13,6 +13,7 @@ import {
     ResponsiveContainer
 } from 'recharts';
 import type { EmployeeStats } from '../utils/analytics';
+import { GlassCard } from './ui/GlassCard';
 
 interface ChartsSectionProps {
     employeeStats: EmployeeStats[];
@@ -43,27 +44,29 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({ employeeStats, avg
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Employee Workload Bar Chart */}
-            <div className="bg-white rounded-lg p-6 shadow border border-gray-200">
-                <h3 className="text-lg font-bold mb-4">Obłożenie Pracowników</h3>
+            <GlassCard>
+                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Obłożenie Pracowników</h3>
                 <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={workloadData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                        <YAxis label={{ value: 'Godziny', angle: -90, position: 'insideLeft' }} />
-                        <Tooltip />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} stroke="#9ca3af" />
+                        <YAxis label={{ value: 'Godziny', angle: -90, position: 'insideLeft' }} stroke="#9ca3af" />
+                        <Tooltip
+                            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                        />
                         <Legend />
-                        <Bar dataKey="hours" fill="#3B82F6" name="Godziny" />
-                        <Bar dataKey="avg" fill="#10B981" name="Średnia" opacity={0.5} />
+                        <Bar dataKey="hours" fill="#3B82F6" name="Godziny" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="avg" fill="#10B981" name="Średnia" opacity={0.5} radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
-                <p className="text-sm text-gray-600 mt-2 text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">
                     Średnia: {Math.round(avgHours)}h | Zielony pasek = średnie obciążenie
                 </p>
-            </div>
+            </GlassCard>
 
             {/* Shift Distribution Pie Chart */}
-            <div className="bg-white rounded-lg p-6 shadow border border-gray-200">
-                <h3 className="text-lg font-bold mb-4">Rozkład Typów Pracy</h3>
+            <GlassCard>
+                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Rozkład Typów Pracy</h3>
                 <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                         <Pie
@@ -80,13 +83,16 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({ employeeStats, avg
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                         </Pie>
-                        <Tooltip formatter={(value: number) => `${Math.round(value)}h`} />
+                        <Tooltip
+                            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                            formatter={(value: number) => `${Math.round(value)}h`}
+                        />
                     </PieChart>
                 </ResponsiveContainer>
-                <p className="text-sm text-gray-600 mt-2 text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">
                     Łączne godziny według typu aktywności
                 </p>
-            </div>
+            </GlassCard>
         </div>
     );
 };

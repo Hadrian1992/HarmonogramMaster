@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Users, Download, AlertTriangle, CheckCircle, BarChart3, Clock, Settings, Save, RefreshCw, AlertCircle as AlertIcon, User, Sun, Moon } from 'lucide-react';
+import { Calendar, Users, AlertTriangle, CheckCircle, BarChart3, Clock, Settings, Save, RefreshCw, AlertCircle as AlertIcon, User, Sun, Moon, LogOut, TrendingUp } from 'lucide-react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { Login } from './components/Login';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import clsx from 'clsx';
 import { useThemeStore } from './store/useThemeStore';
 import { useEffect } from 'react';
@@ -9,30 +12,33 @@ import { ScheduleGrid } from './components/ScheduleGrid';
 import { Dashboard } from './components/Dashboard';
 import { EmployeeManager } from './components/EmployeeManager';
 import { WeeklyTimeline } from './components/WeeklyTimeline';
+import { TimelineView } from './components/Timeline/TimelineView';
+import { MonthlyView } from './components/Monthly/MonthlyView';
 import { EmployeeView } from './components/EmployeeView';
 import { MonthComparison } from './components/MonthComparison';
 import { ConfigView } from './components/ConfigView';
 import { AIAssistant } from './components/AIAssistant';
-import { exportToExcel } from './utils/excelExport';
+// import { exportToExcel } from './utils/excelExport'; // Removed as per user request
 import { analyzeSchedule } from './utils/analytics';
 import { getHolidays } from './utils/holidays';
 
-function App() {
+function MainLayout() {
   const { schedule, setMonth } = useScheduleStore();
   const { sessions } = useChatStore();
-  const { theme, toggleTheme } = useThemeStore();
+  const { isDark, toggleTheme } = useThemeStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (theme === 'dark') {
+    if (isDark) {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-  }, [theme]);
+  }, [isDark]);
 
   const [isEmployeeManagerOpen, setIsEmployeeManagerOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'schedule' | 'dashboard' | 'timeline' | 'employee' | 'comparison' | 'config'>('schedule');
+  const [currentView, setCurrentView] = useState<'schedule' | 'dashboard' | 'timeline' | 'coverage' | 'monthly' | 'employee' | 'comparison' | 'config'>('schedule');
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [showLoadConfirmation, setShowLoadConfirmation] = useState(false);
 
@@ -41,8 +47,17 @@ function App() {
   const [syncMessage, setSyncMessage] = useState('');
   const serverUrl = 'http://localhost:3001';
 
-  const handleExport = () => {
-    exportToExcel(schedule);
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:3001/api/logout', {
+        method: 'POST',
+        credentials: 'include' // CRITICAL: Required to allow the server to clear the cookie
+      });
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      navigate('/login'); // Force redirect anyway
+    }
   };
 
   const executeSyncPush = async () => {
@@ -177,7 +192,7 @@ function App() {
   }, [schedule.year, schedule.month]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
+    <div className="min-h-screen flex flex-col transition-colors duration-200">
       {/* Save Confirmation Modal */}
       {showSaveConfirmation && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -254,7 +269,7 @@ function App() {
         <EmployeeManager onClose={() => setIsEmployeeManagerOpen(false)} />
       )}
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 shadow-sm z-20 relative transition-colors duration-200 border-b dark:border-slate-800">
+      <header className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-lg shadow-sm z-20 relative transition-colors duration-200 border-b border-white/20 dark:border-slate-800">
         <div className="max-w-[1920px] mx-auto px-4 py-4 md:px-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -289,14 +304,6 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 self-end md:self-auto">
-              {/* Theme Toggle */}
-              <button
-                onClick={toggleTheme}
-                className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent dark:border-slate-700"
-                title={theme === 'dark' ? 'Włącz tryb jasny' : 'Włącz tryb ciemny'}
-              >
-                {theme === 'dark' ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-slate-600" />}
-              </button>
               {/* Sync Status Indicator */}
               {syncMessage && (
                 <div className={clsx(
@@ -345,12 +352,22 @@ function App() {
                 <Users size={16} />
                 <span className="hidden sm:inline">Pracownicy</span>
               </button>
+
+              {/* Dark Mode Toggle - TailAdmin Style */}
               <button
-                onClick={handleExport}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                onClick={toggleTheme}
+                className="flex items-center justify-center w-9 h-9 text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-transparent dark:border-slate-700"
+                title={isDark ? 'Tryb jasny' : 'Tryb ciemny'}
               >
-                <Download size={16} />
-                <span className="hidden sm:inline">Eksportuj do Excela</span>
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Wyloguj</span>
               </button>
             </div>
           </div>
@@ -392,6 +409,30 @@ function App() {
             >
               <Clock size={16} />
               Oś czasu
+            </button>
+            <button
+              onClick={() => setCurrentView('coverage')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'coverage'
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <Clock size={16} />
+              Pokrycie Godz
+            </button>
+            <button
+              onClick={() => setCurrentView('monthly')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'monthly'
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <TrendingUp size={16} />
+              Pokrycie Miesięczne
             </button>
             <button
               onClick={() => setCurrentView('employee')}
@@ -536,6 +577,10 @@ function App() {
           <Dashboard />
         ) : currentView === 'timeline' ? (
           <WeeklyTimeline />
+        ) : currentView === 'coverage' ? (
+          <TimelineView />
+        ) : currentView === 'monthly' ? (
+          <MonthlyView />
         ) : currentView === 'employee' ? (
           <EmployeeView />
         ) : currentView === 'comparison' ? (
@@ -544,8 +589,33 @@ function App() {
           <ConfigView />
         )}
       </main>
+      <footer className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-lg border-t border-white/20 dark:border-slate-800 py-4 px-6 text-center text-xs text-slate-500 dark:text-slate-400">
+        <p>
+          Administratorem danych osobowych jest Harmonogram Master. Dane przetwarzane są wyłącznie w celu zarządzania harmonogramem pracy.
+          <br />
+          Zgodnie z RODO masz prawo dostępu do swoich danych, ich sprostowania, usunięcia lub ograniczenia przetwarzania.
+        </p>
+      </footer>
       <AIAssistant />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -122,7 +122,7 @@ function getEmployeeTotalHours(employee: Employee): number {
 async function callOpenRouter(
     question: string,
     schedule: Schedule,
-    apiKey: string,
+    apiKey: string, // Kept for signature compatibility, but ignored or used as fallback if needed (though backend handles it)
     model: string = 'google/gemini-2.0-flash-exp:free',
     staffingRules?: StaffingRules
 ): Promise<AIResponse> {
@@ -160,25 +160,26 @@ ZASADY ODPOWIEDZI:
 `;
 
     try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        // Use backend proxy with GDPR Anonymization support
+        const employeeNames = schedule.employees.map(e => e.name);
+
+        const response = await fetch('http://localhost:3001/api/ai/chat', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://biudulgrafik.pl',
-                'X-Title': 'HarmonogramMaster'
             },
+            credentials: 'include', // Send cookies
             body: JSON.stringify({
                 model: model,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: question }
-                ]
+                systemPrompt: systemPrompt,
+                userMessage: question,
+                employeeNames: employeeNames
             })
         });
 
         if (!response.ok) {
-            throw new Error(`OpenRouter API error: ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`Backend API error: ${response.status} ${errorText}`);
         }
 
         const data = await response.json();
@@ -187,7 +188,7 @@ ZASADY ODPOWIEDZI:
         return { text };
     } catch (error) {
         console.error('AI Error:', error);
-        return { text: 'Wystąpił błąd połączenia z asystentem AI. Sprawdź klucz API lub spróbuj ponownie później.' };
+        return { text: 'Wystąpił błąd połączenia z asystentem AI. Sprawdź połączenie z serwerem.' };
     }
 }
 

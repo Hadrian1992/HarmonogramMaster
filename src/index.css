@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+@layer base {
+    body {
+        font-family: 'Inter', sans-serif;
+        @apply bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30 dark:from-slate-900 dark:via-indigo-950/30 dark:to-purple-950/30 min-h-screen;
+        color: #64748B;
+    }
+
+    .dark body {
+        color: #AEB7C0;
+    }
+}
+
+@layer utilities {
+
+    /* Hide scrollbar but keep scrolling functionality */
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+        /* Chrome, Safari, Opera */
+    }
+}

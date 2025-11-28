@@ -10,19 +10,40 @@ export const AIAssistant: React.FC = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
-    const [apiKey, setApiKey] = useState(() => localStorage.getItem('openai_api_key') || import.meta.env.VITE_OPENAI_API_KEY || '');
+    // API Key is now handled by backend
     const [model, setModel] = useState(() => localStorage.getItem('openai_model') || 'google/gemini-2.0-flash-exp:free');
+    const [availableModels, setAvailableModels] = useState<{ id: string, name: string, pricing?: { prompt: string, completion: string } }[]>([]);
+    const [fetchError, setFetchError] = useState('');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const { schedule, staffingRules } = useScheduleStore();
     const { sessions, currentSessionId, addSession, deleteSession, selectSession, addMessage } = useChatStore();
 
-    // 7. TO JEST TEN NOWY KOD - Nasłuchiwanie zmian w kluczu!
+    // Fetch models on mount
+    useEffect(() => {
+        const fetchModels = async () => {
+            try {
+                const response = await fetch('http://localhost:3001/api/ai/models', {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setAvailableModels(data);
+                } else {
+                    setFetchError('Nie udało się pobrać modeli.');
+                }
+            } catch (error) {
+                console.error('Failed to fetch models:', error);
+                setFetchError('Błąd połączenia z API.');
+            }
+        };
+        fetchModels();
+    }, []);
+
+    // Listen for model changes in local storage (sync across tabs)
     useEffect(() => {
         const handleStorageChange = () => {
-            const newKey = localStorage.getItem('openai_api_key');
             const newModel = localStorage.getItem('openai_model');
-            if (newKey !== apiKey) setApiKey(newKey || '');
             if (newModel !== model) setModel(newModel || 'google/gemini-2.0-flash-exp:free');
         };
 
@@ -33,8 +54,7 @@ export const AIAssistant: React.FC = () => {
             window.removeEventListener('storage', handleStorageChange);
             window.removeEventListener('local-storage-update', handleStorageChange);
         };
-    }, [apiKey, model]);
-    // -----------------------------------------------------------
+    }, [model]);
 
     // Initialize session if none exists
     useEffect(() => {
@@ -49,17 +69,15 @@ export const AIAssistant: React.FC = () => {
     const messages = currentSession?.messages || [];
 
     const saveSettings = () => {
-        localStorage.setItem('openai_api_key', apiKey);
         localStorage.setItem('openai_model', model);
         setShowSettings(false);
 
-        // Tutaj też możemy dać event, dla pewności
         window.dispatchEvent(new Event('local-storage-update'));
 
         if (currentSessionId) {
             addMessage(currentSessionId, {
                 id: Date.now().toString(),
-                text: apiKey ? `Ustawienia zapisane. Model: ${model}` : 'Klucz API usunięty. Wracam do trybu podstawowego.',
+                text: `Ustawienia zapisane. Model: ${model}`,
                 sender: 'ai',
                 timestamp: new Date()
             });
@@ -89,7 +107,8 @@ export const AIAssistant: React.FC = () => {
         setIsTyping(true);
 
         try {
-            const response = await askAI(input, schedule, apiKey, model, staffingRules);
+            // API Key is no longer passed from frontend
+            const response = await askAI(input, schedule, '', model, staffingRules);
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 text: response.text,
@@ -102,7 +121,7 @@ export const AIAssistant: React.FC = () => {
             console.error(error);
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
-                text: "Przepraszam, wystąpił błąd połączenia. Sprawdź swój klucz API.",
+                text: "Przepraszam, wystąpił błąd połączenia.",
                 sender: 'ai',
                 timestamp: new Date()
             };
@@ -236,19 +255,6 @@ export const AIAssistant: React.FC = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Klucz API OpenRouter
-                                </label>
-                                <input
-                                    type="password"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    className="w-full p-2 border dark:border-gray-700 rounded focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-white"
-                                    placeholder="sk-or-..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Model AI
                                 </label>
                                 <select
@@ -256,12 +262,35 @@ export const AIAssistant: React.FC = () => {
                                     onChange={(e) => setModel(e.target.value)}
                                     className="w-full p-2 border dark:border-gray-700 rounded focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-800 dark:text-white"
                                 >
-                                    <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
-                                    <option value="google/gemini-2.0-flash-exp:free">Google Gemini 2.0 Flash (Free)</option>
-                                    <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
-                                    <option value="qwen/qwen-2.5-vl-72b-instruct:free">Qwen 2.5 VL 72B (Free)</option>
-                                    <option value="z-ai/glm-4.5-air:free">GLM 4.5 Air (Free)</option>
+                                    {availableModels.length > 0 ? (
+                                        availableModels.map(m => {
+                                            // Format pricing to be readable
+                                            let pricingText = '';
+                                            if (m.pricing?.prompt) {
+                                                const price = parseFloat(m.pricing.prompt);
+                                                if (price === 0) {
+                                                    pricingText = '(Free)';
+                                                } else if (price < 0.01) {
+                                                    // Show in per-million format for very small prices
+                                                    pricingText = `($${(price * 1000000).toFixed(2)}/1M tokens)`;
+                                                } else {
+                                                    pricingText = `($${price.toFixed(2)}/1K tokens)`;
+                                                }
+                                            }
+                                            return (
+                                                <option key={m.id} value={m.id}>
+                                                    {m.name} {pricingText}
+                                                </option>
+                                            );
+                                        })
+                                    ) : (
+                                        <>
+                                            <option value="google/gemini-2.0-flash-exp:free">Google Gemini 2.0 Flash (Free)</option>
+                                            <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
+                                        </>
+                                    )}
                                 </select>
+                                {fetchError && <p className="text-xs text-red-500 mt-1">{fetchError}</p>}
                             </div>
 
                             <button
@@ -270,9 +299,6 @@ export const AIAssistant: React.FC = () => {
                             >
                                 <Save size={18} /> Zapisz ustawienia
                             </button>
-                            <p className="text-xs text-gray-500 text-center">
-                                Dane są zapisywane lokalnie w Twojej przeglądarce.
-                            </p>
                         </div>
                     )}
 
