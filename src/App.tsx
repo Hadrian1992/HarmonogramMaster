@@ -74,6 +74,7 @@ function MainLayout() {
       const response = await fetch(`${serverUrl}/api/data`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // <--- DODAJ TO KONIECZNIE!
         body: JSON.stringify(data)
       });
 
@@ -105,7 +106,9 @@ function MainLayout() {
     setSyncStatus('loading');
     setSyncMessage('Wczytywanie...');
     try {
-      const response = await fetch(`${serverUrl}/api/data`);
+      const response = await fetch(`${serverUrl}/api/data`, {
+        credentials: 'include' // <--- TO JEST KLUCZOWE
+      });
       if (!response.ok) throw new Error('Błąd pobierania z serwera');
 
       const data = await response.json();
