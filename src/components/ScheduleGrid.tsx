@@ -65,6 +65,7 @@ export const ScheduleGrid: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include', // <--- TO NAPRAWIA BŁĄD "Unauthorized"
                 body: JSON.stringify({
+                    schedule: useScheduleStore.getState().schedule, // <--- TO JEST WAŻNE
                     sendMain,
                     sendIndividual
                 })

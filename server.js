@@ -298,12 +298,23 @@ app.post('/api/send-schedules', authenticateCookie, async (req, res) => {
 
     try {
         // 1. Read Schedule Data
-        const fileData = fs.readFileSync(DATA_FILE, 'utf8');
-        const db = JSON.parse(fileData);
-        const schedule = db.schedule;
+        // Sprawdzamy czy frontend przysłał grafik w req.body (priorytet)
+        let schedule = req.body.schedule;
+
+        // Jeśli nie przysłał, to czytamy z pliku (fallback)
+        if (!schedule) {
+            console.log('Using schedule from file (fallback)');
+            try {
+                const fileData = fs.readFileSync(DATA_FILE, 'utf8');
+                const db = JSON.parse(fileData);
+                schedule = db.schedule;
+            } catch (err) {
+                console.error('Error reading schedule file:', err);
+            }
+        }
 
         if (!schedule) {
-            return res.status(404).json({ error: 'No schedule found' });
+            return res.status(404).json({ error: 'No schedule found (neither in body nor file)' });
         }
 
         const monthName = new Date(schedule.year, schedule.month - 1).toLocaleString('pl-PL', { month: 'long', year: 'numeric' });
