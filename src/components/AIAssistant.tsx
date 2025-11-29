@@ -200,7 +200,7 @@ export const AIAssistant: React.FC = () => {
     }
 
     return (
-        <div className="fixed bottom-6 right-6 w-[400px] h-[600px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border dark:border-gray-700 flex flex-col z-50 overflow-hidden">
+        <div className="fixed bottom-6 right-6 w-[600px] h-[600px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border dark:border-gray-700 flex flex-col z-50 overflow-hidden">
             {/* Header */}
             <div className="h-14 bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-between px-4 text-white shrink-0">
                 <div className="flex items-center gap-2">

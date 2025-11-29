@@ -150,9 +150,11 @@ export const ScheduleGrid: React.FC = () => {
         setReplacementError(undefined);
 
         try {
-            const response = await fetch('/api/replacement/find', {
+            const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const response = await fetch(`${serverUrl}/api/replacement/find`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ date, shiftType, employeeOutId, schedule })
             });
 
