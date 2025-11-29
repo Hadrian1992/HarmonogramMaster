@@ -10,7 +10,6 @@ import dotenv from 'dotenv';
 import transporter from './mailer.js';
 import { generatePdfBuffer } from './pdfGenerator.js';
 import { findBestReplacement } from './replacementFinder.js';
-import transporter from './mailer.js';
 import multer from 'multer';
 
 dotenv.config();
