@@ -431,7 +431,7 @@ app.listen(PORT, () => {
     console.log(`Data file location: ${DATA_FILE}`);
 });
 
-const multer = require('multer');
+
 const upload = multer(); // Przechowuje pliki w pamięci RAM (nie zapisuje na dysk - idealne dla nas)
 
 app.post('/api/send-schedules-files', authenticateCookie, upload.any(), async (req, res) => {
