@@ -1,5 +1,6 @@
 import { addCustomFonts } from './customFonts';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { format, getDaysInMonth, startOfMonth } from 'date-fns';
 import type { Employee, Shift, Schedule } from '../types';
 
@@ -311,7 +312,7 @@ export const getEmployeePdfBlob = (employee: Employee, schedule: Schedule): Blob
     }
 
     // 3. Draw Table
-    (doc as any).autoTable({
+    autoTable(doc, {
         head: [['Data', 'Zmiana', 'Godziny']],
         body: tableBody,
         startY: 40,
@@ -340,7 +341,8 @@ export const getEmployeePdfBlob = (employee: Employee, schedule: Schedule): Blob
     });
 
     // 4. Summary
-    const finalY = (doc as any).lastAutoTable.finalY || 150;
+    const finalY = (doc as any).lastAutoTable?.finalY || 150;
+
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text(`Suma godzin: ${totalHours}h`, 14, finalY + 10);
