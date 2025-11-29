@@ -1,9 +1,10 @@
 import { addCustomFonts } from './customFonts';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { format, getDaysInMonth, startOfMonth } from 'date-fns';
 import type { Employee, Shift, Schedule } from '../types';
 
+
+// Stałe
 const MONTH_NAMES = [
     'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
     'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
@@ -11,6 +12,7 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
 
+// Funkcja pomocnicza do formatowania tekstu zmiany
 function formatShiftForPDF(shift: Shift): string {
     if (shift.type === 'WORK' && shift.startHour !== undefined && shift.endHour !== undefined) {
         return `${shift.startHour}:00-${shift.endHour}:00`;
@@ -33,11 +35,11 @@ function formatShiftForPDF(shift: Shift): string {
     return shift.type;
 }
 
-export function exportEmployeePDF(
-    employee: Employee,
-    month: number,
-    year: number
-) {
+// ===================================================================================
+// GŁÓWNA FUNKCJA GENERUJĄCA GRAFICZNY PDF (LODÓWKOWY)
+// ===================================================================================
+
+const generateGraphicEmployeePdf = (employee: Employee, month: number, year: number): jsPDF => {
     const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -73,12 +75,9 @@ export function exportEmployeePDF(
 
     // ===== RYSOWANIE KALENDARZA =====
     const startY = 30;
-    const cellWidth = 38; // Zwiększamy szerokość boxa
+    const cellWidth = 38;
     const cellHeight = 25;
-    const radius = 3; // Większe zaokrąglenie dla ładniejszego efektu
-
-    // Wyśrodkowanie tabeli na stronie (A4 landscape = 297mm)
-    // 7 kolumn * 38mm = 266mm. Margines lewy = (297 - 266) / 2 = 15.5mm
+    const radius = 3;
     const startX = 15.5;
 
     let currentY = startY;
@@ -93,28 +92,22 @@ export function exportEmployeePDF(
         const x = startX + dayCol * cellWidth;
         doc.setFillColor(100, 160, 220);
         doc.setDrawColor(80, 80, 80);
-        doc.setLineWidth(0.1); // Cieńsza linia
-
-        // Używamy wbudowanej metody roundedRect
+        doc.setLineWidth(0.1);
+        // roundedRect(x, y, w, h, rx, ry, style)
         doc.roundedRect(x, currentY - 6, cellWidth - 1, 6, radius, radius, 'FD');
         doc.text(DAY_NAMES[dayCol], x + (cellWidth - 1) / 2, currentY - 2, { align: 'center' });
     }
 
-    currentY += 7; // Odstęp między nagłówkiem a dniami
+    currentY += 7;
     doc.setTextColor(0, 0, 0);
 
     let dayCounter = 1;
     let rowCount = 0;
 
-    // Rysuj dni
     while (dayCounter <= daysInMonth) {
         col = 0;
         rowCount++;
-
-        // Jeśli pierwszy wiersz, przesunięcie
-        if (rowCount === 1) {
-            col = startDayOfWeek;
-        }
+        if (rowCount === 1) col = startDayOfWeek;
 
         for (let dayCol = col; dayCol < 7 && dayCounter <= daysInMonth; dayCol++) {
             const x = startX + dayCol * cellWidth;
@@ -122,16 +115,11 @@ export function exportEmployeePDF(
             const shift = shiftsMap.get(dateStr);
             const isWeekend = dayCol === 5 || dayCol === 6;
 
-            // Tło boxa
-            if (isWeekend) {
-                doc.setFillColor(245, 235, 245); // Bardzo jasny fiolet
-            } else {
-                doc.setFillColor(250, 252, 255); // Bardzo jasny niebieski
-            }
-            doc.setDrawColor(200, 200, 200); // Jasnoszare obramowanie
-            doc.setLineWidth(0.2);
+            if (isWeekend) doc.setFillColor(245, 235, 245);
+            else doc.setFillColor(250, 252, 255);
 
-            // Rysuj zaokrąglony box (FD = Fill + Draw stroke)
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.2);
             doc.roundedRect(x, currentY, cellWidth - 1, cellHeight, radius, radius, 'FD');
 
             // Numer dnia
@@ -148,32 +136,22 @@ export function exportEmployeePDF(
             if (shift) {
                 const shiftText = formatShiftForPDF(shift);
                 const hoursText = `${shift.hours}h`;
-
-                // Godziny (Wyśrodkowane)
                 doc.setTextColor(0, 0, 0);
                 doc.setFont('Roboto', 'bold');
                 doc.text(shiftText, x + (cellWidth - 1) / 2, currentY + 12, { align: 'center', maxWidth: cellWidth - 4 });
 
-                // Suma godzin (mała szara na dole)
                 doc.setFont('Roboto', 'normal');
                 doc.setTextColor(120, 120, 120);
                 doc.setFontSize(7);
                 doc.text(hoursText, x + (cellWidth - 1) / 2, currentY + 21, { align: 'center' });
             } else {
-                // Puste pole
                 doc.setTextColor(220, 220, 220);
                 doc.text('/', x + (cellWidth - 1) / 2, currentY + 12, { align: 'center' });
             }
-
             dayCounter++;
         }
-
-        currentY += cellHeight + 2; // Odstęp między wierszami
-
-        // Zatrzymaj gdy miesiąc się nie zmieści na jednej stronie (bezpiecznik)
-        if (currentY > 190) {
-            break;
-        }
+        currentY += cellHeight + 2;
+        if (currentY > 190) break;
     }
 
     // ===== PODSUMOWANIE =====
@@ -186,27 +164,19 @@ export function exportEmployeePDF(
     let sickDays = 0;
 
     shiftsMap.forEach(shift => {
-        // Calculate work hours (excluding contact hours type K)
         if (shift.type === 'WORK' || ['L4', 'UW', 'UZ', 'OP', 'UŻ', 'UM', 'USW', 'UB'].includes(shift.type)) {
             workHours += shift.hours;
         }
-
-        // Calculate contact hours separately
-        if (shift.contactHours) {
-            contactHours += shift.contactHours;
-        } else if (shift.type === 'K') {
-            contactHours += shift.hours;
-        }
+        if (shift.contactHours) contactHours += shift.contactHours;
+        else if (shift.type === 'K') contactHours += shift.hours;
 
         if (shift.type === 'WORK') workDays++;
         if (shift.type === 'UW') vacDays++;
         if (shift.type === 'L4') sickDays++;
     });
 
-    // Add manual contact hours if they exist
     const manualContactHours = employee.monthlyContactHours?.[monthKey] || 0;
     contactHours += manualContactHours;
-
     const totalHours = workHours + contactHours;
 
     doc.setLineWidth(0.5);
@@ -223,129 +193,58 @@ export function exportEmployeePDF(
     doc.setFont('Roboto', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(60, 60, 60);
+    doc.text(`Liczba dni roboczych: ${workDays}  |  Dni urlopowe: ${vacDays}  |  Dni chorobowe: ${sickDays}`, startX, currentY);
 
-    // Główna linia z podsumowaniem
-    const summaryText = `Liczba dni roboczych: ${workDays}  |  Dni urlopowe: ${vacDays}  |  Dni chorobowe: ${sickDays}`;
-    doc.text(summaryText, startX, currentY);
-
-    // Suma godzin - podobnie jak w UI
     currentY += 4;
     doc.setFont('Roboto', 'bold');
     doc.setFontSize(10);
     doc.text(`Suma: ${totalHours}h`, startX, currentY);
 
-    // Rozpisanie (praca + kontakty)  
     currentY += 4;
     doc.setFont('Roboto', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     doc.text(`(${workHours}h praca + ${contactHours}h kontakty)`, startX, currentY);
 
-    // ===== STOPKA =====
+    // ===== STOPKA DATY (LEWY RÓG) =====
     doc.setFontSize(7);
     doc.setFont('Roboto', 'italic');
     doc.setTextColor(150, 150, 150);
     doc.text(
         `Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`,
-        doc.internal.pageSize.getWidth() / 2,
+        15, // Przesunięte do lewej (marginesy strony)
         doc.internal.pageSize.getHeight() - 5,
-        { align: 'center' }
+        { align: 'left' } // Wyrównanie do lewej
     );
 
-    // ===== ZAPISZ =====
+    // ===== KLAUZULA RODO (WYŚRODKOWANA NA DOLE) =====
+    const rodoY = doc.internal.pageSize.getHeight() - 12; // Wyżej niż "Wygenerowano"
+    doc.setFontSize(6);
+    doc.setTextColor(120);
+
+    // WAŻNE: Ponowne ustawienie czcionki przed tekstem RODO
+    doc.setFont('Roboto', 'normal');
+
+    const rodoText = 'Administratorem danych osobowych jest Harmonogram Master. Dane przetwarzane są wyłącznie w celu zarządzania harmonogramem pracy.\nZgodnie z RODO masz prawo dostępu do swoich danych, ich sprostowania, usunięcia lub ograniczenia przetwarzania.';
+
+    doc.text(rodoText, doc.internal.pageSize.getWidth() / 2, rodoY, { align: 'center', maxWidth: 250 });
+
+    return doc;
+};
+
+// ===================================================================================
+// EXPORTY PUBLICZNE
+// ===================================================================================
+
+// 1. Pobieranie pliku na dysk
+export function exportEmployeePDF(employee: Employee, month: number, year: number) {
+    const doc = generateGraphicEmployeePdf(employee, month, year);
     const filename = `harmonogram_${employee.name.replace(/ /g, '_')}_${month}_${year}.pdf`;
     doc.save(filename);
 }
 
-// --- DODAJ TO NA KOŃCU PLIKU employeePdfExport.ts ---
-
-/**
- * Generuje indywidualny harmonogram jako BLOB (do wysyłki mailem)
- */
+// 2. Generowanie Blob dla maila (TERAZ TO SAMO!)
 export const getEmployeePdfBlob = (employee: Employee, schedule: Schedule): Blob => {
-    const doc = new jsPDF();
-
-    // 1. Header
-    const monthNames = [
-        'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
-        'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
-    ];
-    const monthName = monthNames[schedule.month - 1];
-
-    doc.setFontSize(16);
-    doc.text(`Harmonogram Indywidualny`, 14, 15);
-    doc.setFontSize(12);
-    doc.text(`Pracownik: ${employee.name}`, 14, 22);
-    doc.text(`Miesiąc: ${monthName} ${schedule.year}`, 14, 28);
-    doc.setFontSize(10);
-    doc.text(`Wygenerowano: ${new Date().toLocaleString('pl-PL')}`, 14, 34);
-
-    // 2. Table Data
-    const daysInMonth = new Date(schedule.year, schedule.month, 0).getDate();
-    const tableBody = [];
-    let totalHours = 0;
-
-    for (let i = 1; i <= daysInMonth; i++) {
-        const date = new Date(schedule.year, schedule.month - 1, i);
-        const dateStr = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-        const dayName = date.toLocaleDateString('pl-PL', { weekday: 'long' });
-        const shift = employee.shifts[dateStr];
-
-        let shiftText = '-';
-        let hours = 0;
-
-        if (shift) {
-            if (shift.type === 'WORK') {
-                shiftText = `${shift.startHour} - ${shift.endHour}`;
-                hours = shift.hours;
-                totalHours += hours;
-            } else {
-                shiftText = shift.type; // L4, UW, etc.
-            }
-        }
-
-        tableBody.push([
-            `${i} ${monthName} (${dayName})`,
-            shiftText,
-            hours > 0 ? `${hours}h` : '-'
-        ]);
-    }
-
-    // 3. Draw Table
-    autoTable(doc, {
-        head: [['Data', 'Zmiana', 'Godziny']],
-        body: tableBody,
-        startY: 40,
-        theme: 'grid',
-        styles: { fontSize: 10, cellPadding: 2 },
-        headStyles: { fillColor: [63, 81, 181], textColor: 255 },
-        columnStyles: {
-            0: { cellWidth: 60 },
-            1: { cellWidth: 60 },
-            2: { cellWidth: 30, halign: 'right' }
-        },
-        // Colorize
-        didParseCell: (data: any) => {
-            if (data.section === 'body' && data.column.index === 1) {
-                const text = data.cell.text[0];
-                if (['UW', 'UŻ', 'USW'].includes(text)) {
-                    data.cell.styles.fillColor = [255, 235, 59];
-                } else if (text === 'L4') {
-                    data.cell.styles.fillColor = [244, 67, 54];
-                    data.cell.styles.textColor = 255;
-                } else if (text === '-') {
-                    data.cell.styles.textColor = [150, 150, 150];
-                }
-            }
-        }
-    });
-
-    // 4. Summary
-    const finalY = (doc as any).lastAutoTable?.finalY || 150;
-
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Suma godzin: ${totalHours}h`, 14, finalY + 10);
-
+    const doc = generateGraphicEmployeePdf(employee, schedule.month, schedule.year);
     return doc.output('blob');
 };
