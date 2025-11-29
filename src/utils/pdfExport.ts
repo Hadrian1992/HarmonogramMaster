@@ -242,3 +242,97 @@ export const exportToPDF = (schedule: Schedule) => {
     const fileName = `Harmonogram_${monthName.replace(' ', '_')}.pdf`;
     doc.save(fileName);
 };
+
+// --- DODAJ TO NA KOŃCU PLIKU pdfExport.ts ---
+
+/**
+ * Generuje główny harmonogram jako BLOB (do wysyłki mailem)
+ */
+export const getMainPdfBlob = (schedule: Schedule): Blob => {
+    const doc = new jsPDF('landscape');
+
+    // Używamy tej samej logiki co w generatePDF, ale bez save()
+    // Skopiujmy kluczowe elementy z generatePDF (nagłówek, tabela)
+
+    const monthNames = [
+        'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+        'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+    ];
+    const monthName = monthNames[schedule.month - 1];
+
+    // 1. Title
+    doc.setFontSize(18);
+    doc.text(`Harmonogram Pracy: ${monthName} ${schedule.year}`, 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Wygenerowano: ${new Date().toLocaleString('pl-PL')}`, 14, 22);
+
+    // 2. Table Headers
+    const daysInMonth = new Date(schedule.year, schedule.month, 0).getDate();
+    const tableHead = [['Pracownik', 'Suma Godzin']];
+
+    for (let i = 1; i <= daysInMonth; i++) {
+        const date = new Date(schedule.year, schedule.month - 1, i);
+        const dayName = date.toLocaleDateString('pl-PL', { weekday: 'short' });
+        tableHead[0].push(`${i}\n${dayName}`);
+    }
+
+    // 3. Table Body
+    const tableBody = schedule.employees.map(emp => {
+        const row = [emp.name];
+
+        // Calculate total hours
+        let totalHours = 0;
+        Object.values(emp.shifts).forEach(s => {
+            if (s.type === 'WORK') totalHours += s.hours;
+        });
+        row.push(`${totalHours}h`);
+
+        // Days
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            const shift = emp.shifts[dateStr];
+
+            if (!shift) {
+                row.push('');
+            } else if (shift.type === 'WORK') {
+                row.push(`${shift.startHour}-${shift.endHour}`);
+            } else {
+                row.push(shift.type);
+            }
+        }
+        return row;
+    });
+
+    // 4. Draw Table
+    (doc as any).autoTable({
+        head: tableHead,
+        body: tableBody,
+        startY: 25,
+        styles: { fontSize: 6, cellPadding: 1 },
+        headStyles: { fillColor: [63, 81, 181], textColor: 255, halign: 'center' },
+        columnStyles: {
+            0: { cellWidth: 25, fontStyle: 'bold' }, // Name column
+            1: { cellWidth: 10, fontStyle: 'bold', halign: 'center' } // Hours column
+        },
+        // Colorize cells based on shift type
+        didParseCell: (data: any) => {
+            if (data.section === 'body' && data.column.index > 1) {
+                const text = data.cell.text[0];
+                if (!text) return;
+
+                if (text.includes('-')) {
+                    // Work hours - standard
+                } else if (['UW', 'UŻ', 'USW'].includes(text)) {
+                    data.cell.styles.fillColor = [255, 235, 59]; // Yellow for vacation
+                } else if (text === 'L4') {
+                    data.cell.styles.fillColor = [244, 67, 54]; // Red for sick leave
+                    data.cell.styles.textColor = 255;
+                } else if (text === 'W') {
+                    data.cell.styles.fillColor = [238, 238, 238]; // Gray for day off
+                }
+            }
+        }
+    });
+
+    return doc.output('blob');
+};

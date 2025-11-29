@@ -10,6 +10,8 @@ import dotenv from 'dotenv';
 import transporter from './mailer.js';
 import { generatePdfBuffer } from './pdfGenerator.js';
 import { findBestReplacement } from './replacementFinder.js';
+import transporter from './mailer.js';
+import multer from 'multer';
 
 dotenv.config();
 
@@ -428,4 +430,71 @@ app.post('/api/replacement/find', authenticateCookie, async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Data file location: ${DATA_FILE}`);
+});
+
+const multer = require('multer');
+const upload = multer(); // Przechowuje pliki w pamięci RAM (nie zapisuje na dysk - idealne dla nas)
+
+app.post('/api/send-schedules-files', authenticateCookie, upload.any(), async (req, res) => {
+    try {
+        const sendMain = req.body.sendMain === 'true';
+        const sendIndividual = req.body.sendIndividual === 'true';
+        const employees = JSON.parse(req.body.employeesData); // Lista pracowników z emailami
+        const files = req.files; // Tu są nasze PDFy
+
+        // Znajdź plik główny (jeśli jest)
+        const mainPdfFile = files.find(f => f.fieldname === 'mainPdf');
+
+        let sentCount = 0;
+        const errors = [];
+
+        for (const emp of employees) {
+            if (!emp.email) continue;
+
+            const attachments = [];
+
+            // 1. Dodaj główny PDF
+            if (sendMain && mainPdfFile) {
+                attachments.push({
+                    filename: `Harmonogram_Zbiorczy.pdf`,
+                    content: mainPdfFile.buffer
+                });
+            }
+
+            // 2. Dodaj indywidualny PDF
+            if (sendIndividual) {
+                // Szukamy pliku, który nazwaliśmy individual_ID.pdf
+                const empFile = files.find(f => f.originalname === `individual_${emp.id}.pdf`);
+                if (empFile) {
+                    attachments.push({
+                        filename: `Twój_Grafik_${emp.name}.pdf`,
+                        content: empFile.buffer
+                    });
+                }
+            }
+
+            if (attachments.length === 0) continue;
+
+            // 3. Wyślij maila
+            try {
+                await transporter.sendMail({
+                    from: process.env.SMTP_USER,
+                    to: emp.email,
+                    subject: 'Nowy Grafik Pracy',
+                    text: 'W załączniku przesyłamy grafik.',
+                    attachments: attachments
+                });
+                sentCount++;
+            } catch (err) {
+                console.error(`Mail error for ${emp.name}:`, err);
+                errors.push({ name: emp.name, error: err.message });
+            }
+        }
+
+        res.json({ success: true, sent: sentCount, errors });
+
+    } catch (error) {
+        console.error('Handler error:', error);
+        res.status(500).json({ error: 'Server error processing files' });
+    }
 });

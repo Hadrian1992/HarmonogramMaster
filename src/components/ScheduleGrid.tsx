@@ -14,6 +14,8 @@ import { ScheduleGridMobile } from './ScheduleGridMobile';
 import { GlassCard } from './ui/GlassCard';
 import { PageHeader } from './ui/PageHeader';
 import { GlassButton } from './ui/GlassButton';
+import { getMainPdfBlob } from '../utils/pdfExport';
+import { getEmployeePdfBlob } from '../utils/employeePdfExport';
 
 export const ScheduleGrid: React.FC = () => {
     const { schedule, updateShift, setManualContactHours, restoreSchedule, copyDay, pasteDay, copiedDay, templates: weeklyTemplates, saveTemplate, applyTemplate: applyWeeklyTemplate, deleteTemplate, colorSettings } = useScheduleStore();
@@ -59,16 +61,44 @@ export const ScheduleGrid: React.FC = () => {
         const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
         try {
-            // Endpoint z Twojego backendu to /api/send-schedules
-            const response = await fetch(`${serverUrl}/api/send-schedules`, {
+            const schedule = useScheduleStore.getState().schedule;
+            const formData = new FormData();
+
+            // 1. Dodajemy podstawowe dane
+            formData.append('sendMain', String(sendMain));
+            formData.append('sendIndividual', String(sendIndividual));
+            // Wysyłamy listę pracowników jako JSON, żeby backend wiedział komu wysłać
+            // (ale samych PDFów backend nie będzie generował, weźmie je z załączników)
+            formData.append('employeesData', JSON.stringify(schedule.employees));
+
+            // 2. Generujemy i dodajemy GŁÓWNY PDF
+            if (sendMain) {
+                console.log('Generowanie głównego PDF...');
+                const mainBlob = getMainPdfBlob(schedule);
+                formData.append('mainPdf', mainBlob, 'Harmonogram_Zbiorczy.pdf');
+            }
+
+            // 3. Generujemy i dodajemy INDYWIDUALNE PDF
+            if (sendIndividual) {
+                console.log('Generowanie indywidualnych PDF...');
+                schedule.employees.forEach(emp => {
+                    if (emp.email) { // Tylko dla tych co mają email
+                        const empBlob = getEmployeePdfBlob(emp, schedule);
+                        // Nazwa pliku jest kluczem! Backend po niej rozpozna czyj to grafik.
+                        // Używamy ID pracownika w nazwie pliku.
+                        formData.append('individualPdfs', empBlob, `individual_${emp.id}.pdf`);
+                    }
+                });
+            }
+
+            console.log('Wysyłanie do serwera...');
+
+            // 4. Wysyłamy request
+            // Zmieniamy endpoint na taki, który obsłuży pliki (zrobimy go w kroku 4)
+            const response = await fetch(`${serverUrl}/api/send-schedules-files`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // <--- TO NAPRAWIA BŁĄD "Unauthorized"
-                body: JSON.stringify({
-                    schedule: useScheduleStore.getState().schedule, // <--- TO JEST WAŻNE
-                    sendMain,
-                    sendIndividual
-                })
+                credentials: 'include',
+                body: formData // Brak Content-Type (to ważne przy FormData!)
             });
 
             const data = await response.json();
@@ -79,7 +109,6 @@ export const ScheduleGrid: React.FC = () => {
                     setTimeout(() => setShowSendModal(false), 2000);
                 }
             } else {
-                // Obsługa błędów z backendu (np. 404 No schedule found)
                 alert('Błąd wysyłania: ' + (data.error || 'Wystąpił nieznany błąd'));
             }
         } catch (error) {

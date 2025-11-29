@@ -1,7 +1,7 @@
 import { addCustomFonts } from './customFonts';
 import jsPDF from 'jspdf';
 import { format, getDaysInMonth, startOfMonth } from 'date-fns';
-import type { Employee, Shift } from '../types';
+import type { Employee, Shift, Schedule } from '../types';
 
 const MONTH_NAMES = [
     'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
@@ -255,3 +255,97 @@ export function exportEmployeePDF(
     const filename = `harmonogram_${employee.name.replace(/ /g, '_')}_${month}_${year}.pdf`;
     doc.save(filename);
 }
+
+// --- DODAJ TO NA KOŃCU PLIKU employeePdfExport.ts ---
+
+/**
+ * Generuje indywidualny harmonogram jako BLOB (do wysyłki mailem)
+ */
+export const getEmployeePdfBlob = (employee: Employee, schedule: Schedule): Blob => {
+    const doc = new jsPDF();
+
+    // 1. Header
+    const monthNames = [
+        'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+        'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+    ];
+    const monthName = monthNames[schedule.month - 1];
+
+    doc.setFontSize(16);
+    doc.text(`Harmonogram Indywidualny`, 14, 15);
+    doc.setFontSize(12);
+    doc.text(`Pracownik: ${employee.name}`, 14, 22);
+    doc.text(`Miesiąc: ${monthName} ${schedule.year}`, 14, 28);
+    doc.setFontSize(10);
+    doc.text(`Wygenerowano: ${new Date().toLocaleString('pl-PL')}`, 14, 34);
+
+    // 2. Table Data
+    const daysInMonth = new Date(schedule.year, schedule.month, 0).getDate();
+    const tableBody = [];
+    let totalHours = 0;
+
+    for (let i = 1; i <= daysInMonth; i++) {
+        const date = new Date(schedule.year, schedule.month - 1, i);
+        const dateStr = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        const dayName = date.toLocaleDateString('pl-PL', { weekday: 'long' });
+        const shift = employee.shifts[dateStr];
+
+        let shiftText = '-';
+        let hours = 0;
+        let type = '';
+
+        if (shift) {
+            type = shift.type;
+            if (shift.type === 'WORK') {
+                shiftText = `${shift.startHour} - ${shift.endHour}`;
+                hours = shift.hours;
+                totalHours += hours;
+            } else {
+                shiftText = shift.type; // L4, UW, etc.
+            }
+        }
+
+        tableBody.push([
+            `${i} ${monthName} (${dayName})`,
+            shiftText,
+            hours > 0 ? `${hours}h` : '-'
+        ]);
+    }
+
+    // 3. Draw Table
+    (doc as any).autoTable({
+        head: [['Data', 'Zmiana', 'Godziny']],
+        body: tableBody,
+        startY: 40,
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 2 },
+        headStyles: { fillColor: [63, 81, 181], textColor: 255 },
+        columnStyles: {
+            0: { cellWidth: 60 },
+            1: { cellWidth: 60 },
+            2: { cellWidth: 30, halign: 'right' }
+        },
+        // Colorize
+        didParseCell: (data: any) => {
+            if (data.section === 'body' && data.column.index === 1) {
+                const text = data.cell.text[0];
+                if (['UW', 'UŻ', 'USW'].includes(text)) {
+                    data.cell.styles.fillColor = [255, 235, 59];
+                } else if (text === 'L4') {
+                    data.cell.styles.fillColor = [244, 67, 54];
+                    data.cell.styles.textColor = 255;
+                } else if (text === '-') {
+                    data.cell.styles.textColor = [150, 150, 150];
+                }
+            }
+        }
+    });
+
+    // 4. Summary
+    const finalY = (doc as any).lastAutoTable.finalY || 150;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Suma godzin: ${totalHours}h`, 14, finalY + 10);
+
+    return doc.output('blob');
+};
