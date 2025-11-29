@@ -33,7 +33,7 @@ function formatShiftForPDF(shift: Shift): string {
 }
 
 // ===================================================================================
-// GŁÓWNA FUNKCJA GENERUJĄCA GRAFICZNY PDF (BEZPECZNA WERSJA)
+// GŁÓWNA FUNKCJA GENERUJĄCA GRAFICZNY PDF (WERSJA Z OKRĄGŁYMI ROGAMI)
 // ===================================================================================
 
 const generateGraphicEmployeePdf = (employee: Employee, month: number, year: number): jsPDF => {
@@ -73,6 +73,7 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
     const startY = 30;
     const cellWidth = 38;
     const cellHeight = 25;
+    const radius = 3;
     const startX = 15.5;
 
     let currentY = startY;
@@ -88,8 +89,10 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
         doc.setFillColor(100, 160, 220);
         doc.setDrawColor(80, 80, 80);
         doc.setLineWidth(0.1);
-        // ZMIANA: używamy rect zamiast roundedRect
-        doc.rect(x, currentY - 6, cellWidth - 1, 6, 'FD');
+
+        // UŻYWAMY (doc as any) ŻEBY ZACHOWAĆ OKRĄGŁE ROGI
+        (doc as any).roundedRect(x, currentY - 6, cellWidth - 1, 6, radius, radius, 'FD');
+
         doc.text(DAY_NAMES[dayCol], x + (cellWidth - 1) / 2, currentY - 2, { align: 'center' });
     }
 
@@ -115,8 +118,9 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
 
             doc.setDrawColor(200, 200, 200);
             doc.setLineWidth(0.2);
-            // ZMIANA: używamy rect zamiast roundedRect
-            doc.rect(x, currentY, cellWidth - 1, cellHeight, 'FD');
+
+            // UŻYWAMY (doc as any) ŻEBY ZACHOWAĆ OKRĄGŁE ROGI
+            (doc as any).roundedRect(x, currentY, cellWidth - 1, cellHeight, radius, radius, 'FD');
 
             doc.setFont('Roboto', 'bold');
             doc.setFontSize(10);
@@ -200,7 +204,7 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
     doc.setTextColor(100, 100, 100);
     doc.text(`(${workHours}h praca + ${contactHours}h kontakty)`, startX, currentY);
 
-    // ===== STOPKA =====
+    // ===== STOPKA DATY (LEWY RÓG) =====
     doc.setFontSize(7);
     doc.setFont('Roboto', 'italic');
     doc.setTextColor(150, 150, 150);
@@ -211,7 +215,7 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
         { align: 'left' }
     );
 
-    // ===== KLAUZULA RODO =====
+    // ===== KLAUZULA RODO (WYŚRODKOWANA) =====
     const rodoY = doc.internal.pageSize.getHeight() - 12;
     doc.setFontSize(6);
     doc.setTextColor(120);
