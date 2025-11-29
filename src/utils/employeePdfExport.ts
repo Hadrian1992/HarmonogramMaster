@@ -292,10 +292,8 @@ export const getEmployeePdfBlob = (employee: Employee, schedule: Schedule): Blob
 
         let shiftText = '-';
         let hours = 0;
-        let type = '';
 
         if (shift) {
-            type = shift.type;
             if (shift.type === 'WORK') {
                 shiftText = `${shift.startHour} - ${shift.endHour}`;
                 hours = shift.hours;
