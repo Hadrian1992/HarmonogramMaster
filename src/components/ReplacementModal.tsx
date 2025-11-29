@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, UserPlus, AlertCircle, CheckCircle, Check, Info, AlertTriangle } from 'lucide-react';
+import { X, UserPlus, Check, Info, AlertTriangle } from 'lucide-react';
 
 interface ReplacementCandidate {
     id: string;
