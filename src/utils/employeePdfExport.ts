@@ -3,8 +3,6 @@ import jsPDF from 'jspdf';
 import { format, getDaysInMonth, startOfMonth } from 'date-fns';
 import type { Employee, Shift, Schedule } from '../types';
 
-
-// Stałe
 const MONTH_NAMES = [
     'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
     'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
@@ -12,7 +10,6 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
 
-// Funkcja pomocnicza do formatowania tekstu zmiany
 function formatShiftForPDF(shift: Shift): string {
     if (shift.type === 'WORK' && shift.startHour !== undefined && shift.endHour !== undefined) {
         return `${shift.startHour}:00-${shift.endHour}:00`;
@@ -36,7 +33,7 @@ function formatShiftForPDF(shift: Shift): string {
 }
 
 // ===================================================================================
-// GŁÓWNA FUNKCJA GENERUJĄCA GRAFICZNY PDF (LODÓWKOWY)
+// GŁÓWNA FUNKCJA GENERUJĄCA GRAFICZNY PDF (BEZPECZNA WERSJA)
 // ===================================================================================
 
 const generateGraphicEmployeePdf = (employee: Employee, month: number, year: number): jsPDF => {
@@ -46,7 +43,6 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
         format: 'a4'
     });
 
-    // Dodaj czcionkę Roboto
     addCustomFonts(doc);
     doc.setFont('Roboto');
 
@@ -77,7 +73,6 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
     const startY = 30;
     const cellWidth = 38;
     const cellHeight = 25;
-    const radius = 3;
     const startX = 15.5;
 
     let currentY = startY;
@@ -93,8 +88,8 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
         doc.setFillColor(100, 160, 220);
         doc.setDrawColor(80, 80, 80);
         doc.setLineWidth(0.1);
-        // roundedRect(x, y, w, h, rx, ry, style)
-        doc.roundedRect(x, currentY - 6, cellWidth - 1, 6, radius, radius, 'FD');
+        // ZMIANA: używamy rect zamiast roundedRect
+        doc.rect(x, currentY - 6, cellWidth - 1, 6, 'FD');
         doc.text(DAY_NAMES[dayCol], x + (cellWidth - 1) / 2, currentY - 2, { align: 'center' });
     }
 
@@ -120,15 +115,14 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
 
             doc.setDrawColor(200, 200, 200);
             doc.setLineWidth(0.2);
-            doc.roundedRect(x, currentY, cellWidth - 1, cellHeight, radius, radius, 'FD');
+            // ZMIANA: używamy rect zamiast roundedRect
+            doc.rect(x, currentY, cellWidth - 1, cellHeight, 'FD');
 
-            // Numer dnia
             doc.setFont('Roboto', 'bold');
             doc.setFontSize(10);
             doc.setTextColor(60, 120, 200);
             doc.text(String(dayCounter), x + 3, currentY + 5);
 
-            // Zmiana
             doc.setFont('Roboto', 'normal');
             doc.setFontSize(7);
             doc.setTextColor(0, 0, 0);
@@ -206,44 +200,36 @@ const generateGraphicEmployeePdf = (employee: Employee, month: number, year: num
     doc.setTextColor(100, 100, 100);
     doc.text(`(${workHours}h praca + ${contactHours}h kontakty)`, startX, currentY);
 
-    // ===== STOPKA DATY (LEWY RÓG) =====
+    // ===== STOPKA =====
     doc.setFontSize(7);
     doc.setFont('Roboto', 'italic');
     doc.setTextColor(150, 150, 150);
     doc.text(
         `Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`,
-        15, // Przesunięte do lewej (marginesy strony)
+        15,
         doc.internal.pageSize.getHeight() - 5,
-        { align: 'left' } // Wyrównanie do lewej
+        { align: 'left' }
     );
 
-    // ===== KLAUZULA RODO (WYŚRODKOWANA NA DOLE) =====
-    const rodoY = doc.internal.pageSize.getHeight() - 12; // Wyżej niż "Wygenerowano"
+    // ===== KLAUZULA RODO =====
+    const rodoY = doc.internal.pageSize.getHeight() - 12;
     doc.setFontSize(6);
     doc.setTextColor(120);
-
-    // WAŻNE: Ponowne ustawienie czcionki przed tekstem RODO
-    doc.setFont('Roboto', 'normal');
+    doc.setFont('Roboto', 'normal'); // Wymuszenie czcionki
 
     const rodoText = 'Administratorem danych osobowych jest Harmonogram Master. Dane przetwarzane są wyłącznie w celu zarządzania harmonogramem pracy.\nZgodnie z RODO masz prawo dostępu do swoich danych, ich sprostowania, usunięcia lub ograniczenia przetwarzania.';
-
     doc.text(rodoText, doc.internal.pageSize.getWidth() / 2, rodoY, { align: 'center', maxWidth: 250 });
 
     return doc;
 };
 
-// ===================================================================================
-// EXPORTY PUBLICZNE
-// ===================================================================================
-
-// 1. Pobieranie pliku na dysk
+// EXPORTY
 export function exportEmployeePDF(employee: Employee, month: number, year: number) {
     const doc = generateGraphicEmployeePdf(employee, month, year);
     const filename = `harmonogram_${employee.name.replace(/ /g, '_')}_${month}_${year}.pdf`;
     doc.save(filename);
 }
 
-// 2. Generowanie Blob dla maila (TERAZ TO SAMO!)
 export const getEmployeePdfBlob = (employee: Employee, schedule: Schedule): Blob => {
     const doc = generateGraphicEmployeePdf(employee, schedule.month, schedule.year);
     return doc.output('blob');
