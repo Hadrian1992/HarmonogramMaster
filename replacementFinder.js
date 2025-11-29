@@ -49,7 +49,7 @@ const checkHardConstraints = (employee, dateStr, proposedShiftType) => {
     return { valid: true };
 };
 
-const calculateScore = (employee, dateStr, proposedShiftType, allEmployees) => {
+const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, includeContactHours = false) => {
     let score = 0;
     const reasons = [];
     const date = new Date(dateStr);
@@ -105,11 +105,30 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees) => {
     // 4. Hours Balancing
     let totalHours = 0;
     let myHours = 0;
+
+    // Determine month key for manual contact hours
+    const monthKey = dateStr.substring(0, 7);
+
     allEmployees.forEach(e => {
+        let empTotal = 0;
+
+        // Sum shift hours
         Object.values(e.shifts).forEach(s => {
-            if (s.hours) totalHours += s.hours;
-            if (e.id === employee.id && s.hours) myHours += s.hours;
+            if (s.date.startsWith(monthKey)) {
+                empTotal += (s.hours || 0);
+                if (includeContactHours) {
+                    empTotal += (s.contactHours || (s.type === 'K' ? s.hours : 0) || 0);
+                }
+            }
         });
+
+        // Add manual contact hours
+        if (includeContactHours) {
+            empTotal += (e.monthlyContactHours?.[monthKey] || 0);
+        }
+
+        totalHours += empTotal;
+        if (e.id === employee.id) myHours = empTotal;
     });
     const avgHours = totalHours / allEmployees.length;
 
@@ -141,7 +160,7 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees) => {
     return { score, reasons };
 };
 
-export async function findBestReplacement({ date, shiftType, employeeOutId, schedule }) {
+export async function findBestReplacement({ date, shiftType, employeeOutId, schedule, includeContactHours = false }) {
     const candidates = [];
     const allEmployees = schedule.employees;
 
@@ -162,13 +181,30 @@ export async function findBestReplacement({ date, shiftType, employeeOutId, sche
             continue;
         }
 
-        const { score, reasons } = calculateScore(emp, date, shiftType, allEmployees);
+        const { score, reasons } = calculateScore(emp, date, shiftType, allEmployees, includeContactHours);
 
         // Calculate monthly hours for context
         const monthKey = date.substring(0, 7); // YYYY-MM
-        const monthlyHours = Object.values(emp.shifts)
+
+        let monthlyHours = 0;
+
+        // 1. Sum shift hours
+        monthlyHours = Object.values(emp.shifts)
             .filter(s => s.date.startsWith(monthKey))
-            .reduce((acc, s) => acc + (s.hours || 0), 0);
+            .reduce((acc, s) => {
+                let h = (s.hours || 0);
+                if (includeContactHours) {
+                    // Add contact hours from shift
+                    h += (s.contactHours || (s.type === 'K' ? s.hours : 0) || 0);
+                }
+                return acc + h;
+            }, 0);
+
+        // 2. Add manual contact hours if requested
+        if (includeContactHours) {
+            const manual = emp.monthlyContactHours?.[monthKey] || 0;
+            monthlyHours += manual;
+        }
 
         candidates.push({
             id: emp.id,

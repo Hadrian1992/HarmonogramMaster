@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, UserPlus, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, UserPlus, AlertCircle, CheckCircle, Check, Info, AlertTriangle } from 'lucide-react';
 
 interface ReplacementCandidate {
     id: string;
@@ -20,6 +20,8 @@ interface ReplacementModalProps {
     context: { date: string; empName: string; shiftType: string } | null;
     error?: string;
     onSelectCandidate: (candidateId: string, candidateName: string) => void;
+    includeContactHours?: boolean;
+    onToggleContactHours?: (value: boolean) => void;
 }
 
 export const ReplacementModal: React.FC<ReplacementModalProps> = ({
@@ -29,156 +31,141 @@ export const ReplacementModal: React.FC<ReplacementModalProps> = ({
     candidates,
     context,
     error,
-    onSelectCandidate
+    onSelectCandidate,
+    includeContactHours = false,
+    onToggleContactHours
 }) => {
     if (!show) return null;
 
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('pl-PL', { year: 'numeric', month: 'long', day: 'numeric' });
-    };
-
-    const getScoreColor = (score: number) => {
-        if (score >= 80) return 'text-green-600 dark:text-green-400';
-        if (score >= 60) return 'text-blue-600 dark:text-blue-400';
-        if (score >= 40) return 'text-yellow-600 dark:text-yellow-400';
-        if (score >= 20) return 'text-orange-600 dark:text-orange-400';
-        return 'text-red-600 dark:text-red-400';
-    };
-
-    const getScoreBg = (score: number) => {
-        if (score >= 80) return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
-        if (score >= 60) return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
-        if (score >= 40) return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
-        if (score >= 20) return 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800';
-        return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
-    };
-
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700">
-                {/* Header */}
-                <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+            <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-start mb-4">
                     <div>
-                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <UserPlus className="text-indigo-500" size={24} />
-                            Inteligentny Asystent Zastępstw
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <UserPlus className="text-purple-500" /> Inteligentny Asystent Zastępstw
                         </h3>
                         {context && (
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1">
-                                Zastępstwo dla: <strong>{context.empName}</strong> • {formatDate(context.date)} • Zmiana: <strong>{context.shiftType}</strong>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                Szukam zastępstwa za: <span className="font-medium text-gray-900 dark:text-white">{context.empName}</span>
+                                <span className="mx-2">•</span>
+                                Data: <span className="font-medium text-gray-900 dark:text-white">{context.date}</span>
+                                <span className="mx-2">•</span>
+                                Zmiana: <span className="font-medium text-gray-900 dark:text-white">{context.shiftType}</span>
                             </p>
                         )}
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                    >
-                        <X size={24} />
-                    </button>
+                    <div className="flex items-center gap-4">
+                        {onToggleContactHours && (
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <div className="relative">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only"
+                                        checked={includeContactHours}
+                                        onChange={(e) => onToggleContactHours(e.target.checked)}
+                                    />
+                                    <div className={`block w-10 h-6 rounded-full transition-colors ${includeContactHours ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${includeContactHours ? 'transform translate-x-4' : ''}`}></div>
+                                </div>
+                                <span className="text-sm text-gray-600 dark:text-gray-300">
+                                    Godz. kontaktowe
+                                </span>
+                            </label>
+                        )}
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <div className="flex-1 overflow-y-auto min-h-[300px]">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
-                            <p className="text-gray-600 dark:text-gray-300">Szukam najlepszych kandydatów...</p>
+                        <div className="flex flex-col items-center justify-center h-full py-12">
+                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent mb-4"></div>
+                            <p className="text-gray-500 dark:text-gray-400">Analizuję grafik i szukam najlepszych kandydatów...</p>
                         </div>
                     ) : error ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-red-500 dark:text-red-400">
-                            <AlertCircle size={48} className="mb-4" />
-                            <p className="text-lg font-bold">Wystąpił błąd</p>
-                            <p className="text-sm mt-2">{error}</p>
-                            <button
-                                onClick={onClose}
-                                className="mt-4 px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
-                            >
-                                Zamknij
-                            </button>
+                        <div className="flex flex-col items-center justify-center h-full py-8 text-red-500">
+                            <AlertTriangle size={48} className="mb-2" />
+                            <p className="font-medium">Wystąpił błąd</p>
+                            <p className="text-sm opacity-80">{error}</p>
                         </div>
                     ) : candidates.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
-                            <AlertCircle size={48} className="mb-4 text-gray-400" />
-                            <p className="text-lg font-medium">Brak dostępnych kandydatów</p>
-                            <p className="text-sm mt-2">Wszystkie osoby są zajęte lub nie spełniają wymagań.</p>
+                        <div className="flex flex-col items-center justify-center h-full py-8 text-gray-500">
+                            <p>Nie znaleziono dostępnych kandydatów spełniających kryteria.</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                <CheckCircle size={16} className="text-green-500" />
-                                <span>Znaleziono {candidates.length} kandydatów. Sortowanie według oceny (100 = idealny).</span>
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-sm text-blue-800 dark:text-blue-200 mb-4 flex items-start gap-2">
+                                <Info size={16} className="mt-0.5 shrink-0" />
+                                <p>
+                                    💡 Ocena uwzględnia: odpoczynek dobowy (11h), reguły zmian nocnych, sprawiedliwość weekendową,
+                                    równomierne obłożenie godzinami oraz ciągłość pracy (max 5 dni).
+                                    {includeContactHours && <span className="font-bold ml-1">Uwzględniono godziny kontaktowe.</span>}
+                                </p>
                             </div>
 
-                            {candidates.map((candidate, idx) => (
+                            {candidates.map((candidate, index) => (
                                 <div
                                     key={candidate.id}
-                                    className={`border rounded-lg p-4 transition-all hover:shadow-md ${getScoreBg(candidate.score)}`}
+                                    className={`p-4 rounded-lg border transition-all hover:shadow-md ${index === 0
+                                        ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                                        }`}
                                 >
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`text-3xl font-bold ${getScoreColor(candidate.score)}`}>
-                                                {candidate.score}
-                                            </div>
-                                            <div>
-                                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                                    {idx === 0 && <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full">TOP</span>}
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="font-bold text-gray-900 dark:text-white text-lg">
                                                     {candidate.name}
                                                 </h4>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    Godziny w tym miesiącu: <strong>{candidate.details.monthlyHours}h</strong>
-                                                </p>
+                                                {index === 0 && (
+                                                    <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                                        <Check size={12} /> Rekomendacja
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-4">
+                                                <span>Godziny w tym miesiącu: <strong className="text-gray-700 dark:text-gray-300">{candidate.details.monthlyHours}h</strong></span>
+                                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${candidate.score > 50 ? 'bg-green-100 text-green-800' :
+                                                    candidate.score > 0 ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-red-100 text-red-800'
+                                                    }`}>
+                                                    Wynik: {candidate.score} pkt
+                                                </span>
                                             </div>
                                         </div>
-                                        {candidate.details.canWork && (
-                                            <button
-                                                onClick={() => onSelectCandidate(candidate.id, candidate.name)}
-                                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
-                                            >
-                                                <UserPlus size={16} />
-                                                Wybierz
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() => onSelectCandidate(candidate.id, candidate.name)}
+                                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                        >
+                                            Wybierz
+                                        </button>
                                     </div>
 
-                                    {candidate.reasons.length > 0 && (
-                                        <div className="space-y-1">
-                                            {candidate.reasons.map((reason, rIdx) => (
-                                                <div key={rIdx} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                                    {reason.includes('wysokie') || reason.includes('wiele') ? (
-                                                        <TrendingDown size={14} className="mt-0.5 text-orange-500 flex-shrink-0" />
-                                                    ) : (
-                                                        <TrendingUp size={14} className="mt-0.5 text-green-500 flex-shrink-0" />
-                                                    )}
-                                                    <span>{reason}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {!candidate.details.canWork && (
-                                        <div className="mt-3 flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 p-2 rounded">
-                                            <AlertCircle size={16} />
-                                            <span className="font-medium">Nie może pracować (naruszenie Kodeksu Pracy)</span>
+                                    {candidate.reasons && candidate.reasons.length > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {candidate.reasons.map((reason: string, idx: number) => {
+                                                const isPositive = reason.includes('Odpoczynek') || reason.includes('sprawiedliwość') || reason.includes('mało godzin');
+                                                return (
+                                                    <span
+                                                        key={idx}
+                                                        className={`text-xs px-2 py-1 rounded border ${isPositive
+                                                            ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
+                                                            : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800'
+                                                            }`}
+                                                    >
+                                                        {reason}
+                                                    </span>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
                             ))}
                         </div>
                     )}
-                </div>
-
-                {/* Footer */}
-                <div className="border-t border-slate-200 dark:border-slate-700 p-4 bg-gray-50 dark:bg-slate-900">
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span>💡 Ocena uwzględnia: 11h odpoczynek, balans godzin, preferencje, noce, dni z rzędu</span>
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-md transition-colors"
-                        >
-                            Zamknij
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>

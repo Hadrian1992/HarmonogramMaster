@@ -43,6 +43,7 @@ export const ScheduleGrid: React.FC = () => {
     const [loadingReplacement, setLoadingReplacement] = useState(false);
     const [replacementContext, setReplacementContext] = useState<{ date: string; empName: string; shiftType: string } | null>(null);
     const [replacementError, setReplacementError] = useState<string | undefined>(undefined);
+    const [includeContactHours, setIncludeContactHours] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,7 +143,7 @@ export const ScheduleGrid: React.FC = () => {
         );
     };
 
-    const findReplacement = async (date: string, shiftType: string, employeeOutId: string, empName: string) => {
+    const findReplacement = async (date: string, shiftType: string, employeeOutId: string, empName: string, useContactHours = includeContactHours) => {
         setLoadingReplacement(true);
         setReplacementContext({ date, empName, shiftType });
         setShowReplacementModal(true);
@@ -155,7 +156,7 @@ export const ScheduleGrid: React.FC = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ date, shiftType, employeeOutId, schedule })
+                body: JSON.stringify({ date, shiftType, employeeOutId, schedule, includeContactHours: useContactHours })
             });
 
             if (!response.ok) {
@@ -175,16 +176,30 @@ export const ScheduleGrid: React.FC = () => {
         }
     };
 
+    const handleToggleContactHours = (newValue: boolean) => {
+        setIncludeContactHours(newValue);
+        if (replacementContext) {
+            // Find employee ID from name (a bit hacky but we don't store ID in context currently, let's find it)
+            const emp = schedule.employees.find(e => e.name === replacementContext.empName);
+            if (emp) {
+                findReplacement(replacementContext.date, replacementContext.shiftType, emp.id, replacementContext.empName, newValue);
+            }
+        }
+    };
+
     const handleSelectReplacement = (candidateId: string, candidateName: string) => {
         if (!replacementContext) return;
 
         // Simple assignment for now - user can edit details later
         // Try to parse shift hours if possible, otherwise just set WORK
         let start, end;
-        const parts = replacementContext.shiftType.split('-');
-        if (parts.length === 2) {
-            const s = parseInt(parts[0]);
-            const e = parseInt(parts[1]);
+
+        // Try to find hours pattern like "14-20", "14/20", "8:00-16:00" anywhere in the string
+        const hoursMatch = replacementContext.shiftType.match(/(\d{1,2})\s*[-/]\s*(\d{1,2})/);
+
+        if (hoursMatch) {
+            const s = parseInt(hoursMatch[1]);
+            const e = parseInt(hoursMatch[2]);
             if (!isNaN(s) && !isNaN(e)) {
                 start = s;
                 end = e;
@@ -1075,7 +1090,7 @@ export const ScheduleGrid: React.FC = () => {
                 )
             }
 
-            {/* Replacement Modal (Phase 7) */}
+            {/* Replacement Modal */}
             <ReplacementModal
                 show={showReplacementModal}
                 onClose={() => setShowReplacementModal(false)}
@@ -1084,6 +1099,8 @@ export const ScheduleGrid: React.FC = () => {
                 context={replacementContext}
                 error={replacementError}
                 onSelectCandidate={handleSelectReplacement}
+                includeContactHours={includeContactHours}
+                onToggleContactHours={handleToggleContactHours}
             />
         </div >
     );

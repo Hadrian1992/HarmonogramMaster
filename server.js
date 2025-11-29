@@ -399,7 +399,7 @@ app.post('/api/send-schedules', authenticateCookie, async (req, res) => {
 
 // 4. REPLACEMENT ROUTE (Phase 7)
 app.post('/api/replacement/find', authenticateCookie, async (req, res) => {
-    const { date, shiftType, employeeOutId } = req.body;
+    const { date, shiftType, employeeOutId, includeContactHours } = req.body;
 
     let schedule = req.body.schedule;
 
@@ -417,7 +417,7 @@ app.post('/api/replacement/find', authenticateCookie, async (req, res) => {
     }
 
     try {
-        const candidates = await findBestReplacement({ date, shiftType, employeeOutId, schedule });
+        const candidates = await findBestReplacement({ date, shiftType, employeeOutId, schedule, includeContactHours });
         res.json({ candidates });
     } catch (error) {
         console.error('Replacement search error:', error);
