@@ -304,7 +304,7 @@ export const getMainPdfBlob = (schedule: Schedule): Blob => {
     });
 
     // 4. Draw Table
-    (doc as any).autoTable({
+    autoTable(doc, {
         head: tableHead,
         body: tableBody,
         startY: 25,
