@@ -138,56 +138,6 @@ export const AIAssistant: React.FC = () => {
         }
     };
 
-    // Render history sidebar
-    const renderHistory = () => (
-        <div className="w-64 border-r dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800">
-            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                <h3 className="font-bold text-gray-700 dark:text-gray-200">Historia</h3>
-                <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
-                    <X size={16} />
-                </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                <button
-                    onClick={() => {
-                        addSession();
-                        setShowHistory(false);
-                    }}
-                    className="w-full p-2 flex items-center gap-2 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:opacity-80 transition-opacity"
-                >
-                    <Plus size={16} /> Nowa rozmowa
-                </button>
-                {sessions.map(session => (
-                    <div
-                        key={session.id}
-                        className={`group flex items-center justify-between p-2 rounded text-sm cursor-pointer ${currentSessionId === session.id
-                            ? 'bg-white dark:bg-gray-700 shadow-sm'
-                            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                        onClick={() => {
-                            selectSession(session.id);
-                            setShowHistory(false);
-                        }}
-                    >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            <MessageSquare size={14} className="shrink-0 text-gray-500" />
-                            <span className="truncate text-gray-700 dark:text-gray-300">{session.title}</span>
-                        </div>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                deleteSession(session.id);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded transition-opacity"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
     if (!isOpen) {
         return (
             <button
@@ -200,7 +150,7 @@ export const AIAssistant: React.FC = () => {
     }
 
     return (
-        <div className="fixed bottom-6 right-6 w-[600px] h-[600px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border dark:border-gray-700 flex flex-col z-50 overflow-hidden">
+        <div className="fixed bottom-6 right-6 w-[450px] h-[600px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border dark:border-gray-700 flex flex-col z-50 overflow-hidden">
             {/* Header */}
             <div className="h-14 bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-between px-4 text-white shrink-0">
                 <div className="flex items-center gap-2">
@@ -240,9 +190,57 @@ export const AIAssistant: React.FC = () => {
             </div>
 
             <div className="flex-1 flex overflow-hidden">
-                {showHistory && renderHistory()}
-
                 <div className="flex-1 flex flex-col relative">
+                    {/* History Overlay */}
+                    {showHistory && (
+                        <div className="absolute inset-0 bg-white dark:bg-gray-900 z-20 p-4 flex flex-col animate-in fade-in slide-in-from-left-4 duration-200">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-lg dark:text-white">Historia Konwersacji</h3>
+                                <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                                <button
+                                    onClick={() => {
+                                        addSession();
+                                        setShowHistory(false);
+                                    }}
+                                    className="w-full p-3 flex items-center gap-2 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:opacity-80 transition-opacity"
+                                >
+                                    <Plus size={16} /> Nowa rozmowa
+                                </button>
+                                {sessions.map(session => (
+                                    <div
+                                        key={session.id}
+                                        className={`group flex items-center justify-between p-3 rounded text-sm cursor-pointer ${currentSessionId === session.id
+                                            ? 'bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-700'
+                                            : 'hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent'
+                                            }`}
+                                        onClick={() => {
+                                            selectSession(session.id);
+                                            setShowHistory(false);
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            <MessageSquare size={16} className="shrink-0 text-gray-500" />
+                                            <span className="truncate text-gray-700 dark:text-gray-300">{session.title}</span>
+                                        </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteSession(session.id);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded transition-opacity"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Settings Overlay */}
                     {showSettings && (
                         <div className="absolute inset-0 bg-white dark:bg-gray-900 z-10 p-4 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-200">

@@ -256,40 +256,57 @@ const generateScheduleDocSplit = (schedule: Schedule): jsPDF => {
             margin: { top: 25, right: 10, bottom: 10, left: 10 }
         });
 
-        // --- LEGENDA I PODPISY (NA KAŻDEJ STRONIE) ---
+        // --- LEGENDA I PODPISY ---
         const tableEndY = (doc as any).lastAutoTable.finalY;
-        const legendY = tableEndY + 15;
-        doc.setFontSize(12);
-        doc.setTextColor(60);
 
-        doc.text('Legenda:', 15, legendY);
+        // 1. LEGENDA (Po lewej, pod tabelą)
+        const legendY = tableEndY + 8;
         doc.setFontSize(10);
-        doc.text('/ - Wolne | UW - Urlop wypoczynkowy | UŻ - Urlop na żądanie | L4 - Zwolnienie lekarskie', 15, legendY + 6);
-        doc.text('K - Godziny kontaktowe | USW - Urlop siła wyższa | UM - Urlop macierzyński | UB - Urlop bezpłatny', 15, legendY + 12);
+        doc.setTextColor(60);
+        doc.text('Legenda:', 15, legendY);
+        doc.setFontSize(8);
+        doc.text('/ - Wolne | UW - Urlop wypoczynkowy | UŻ - Urlop na żądanie | L4 - Zwolnienie lekarskie', 15, legendY + 4);
+        doc.text('K - Godziny kontaktowe | USW - Urlop siła wyższa | UM - Urlop macierzyński | UB - Urlop bezpłatny', 15, legendY + 8);
 
-        const signaturesY = 170;
-        const safeSignaturesY = Math.max(signaturesY, legendY + 25);
+        // 2. PODPISY PRACOWNIKÓW (Po prawej, NIŻEJ i WIĘKSZE)
+        const empSignX = 180; // Trochę w lewo, bo czcionka większa, żeby się zmieściło
+
+        // Zaczynamy niżej niż legenda (np. +15mm od końca tabeli)
+        let currentEmpY = tableEndY + 15;
+
+        doc.setFontSize(14); // Duża czcionka nagłówka
+        doc.setTextColor(0);
+        doc.text('Podpisy pracowników:', empSignX, currentEmpY);
+        currentEmpY += 6; // Większy odstęp pod nagłówkiem
+
+        const employeesToSign = schedule.employees.slice(0, 7);
+
+        doc.setFontSize(13); // Nazwiska ciut mniejsze niż nagłówek, ale czytelne (było 8)
+        employeesToSign.forEach(emp => {
+            doc.text(`${emp.name}: ..............................`, empSignX, currentEmpY);
+            currentEmpY += 6; // Większy odstęp między liniami (było 4.5)
+        });
+
+        // 3. PODPISY ZARZĄDZAJĄCE (Na samym dole)
+        const minFooterY = 175;
+        const dynamicFooterY = currentEmpY + 10;
+        const footerSignY = Math.max(minFooterY, dynamicFooterY);
 
         doc.setFontSize(13);
-        doc.setTextColor(0);
 
         // Lewa strona - Sporządził
-        doc.text('Sporządził:', 30, safeSignaturesY);
-        doc.setLineWidth(0.5);
-        doc.line(30, safeSignaturesY + 10, 100, safeSignaturesY + 10); // Linia
-
-        // DODANE: Automatyczny podpis pod linią
+        doc.text('Sporządził:', 30, footerSignY);
         doc.setFontSize(12);
-        doc.setFont('Roboto', 'italic'); // Jeśli masz wariant italic, jak nie to normal
-        doc.text('Maria Pankowska', 40, safeSignaturesY + 9);
-        doc.setFont('Roboto', 'normal'); // Powrót do normalnego
-
-        // Powrót do ustawień dla prawej strony
-        doc.setFontSize(13);
+        doc.setFont('Roboto', 'italic');
+        doc.text('Maria Pankowska', 40, footerSignY + 8);
+        doc.setFont('Roboto', 'normal');
+        doc.setLineWidth(0.5);
+        doc.line(30, footerSignY + 10, 100, footerSignY + 10);
 
         // Prawa strona - Zatwierdził
-        doc.text('Zatwierdził:', 200, safeSignaturesY);
-        doc.line(200, safeSignaturesY + 10, 270, safeSignaturesY + 10);
+        doc.setFontSize(13);
+        doc.text('Zatwierdził:', 200, footerSignY);
+        doc.line(200, footerSignY + 10, 270, footerSignY + 10);
 
         // --- KLAUZULA RODO (NA KAŻDEJ STRONIE) ---
         const rodoY = 195; // Blisko dolnej krawędzi A4 Landscape (210mm)
