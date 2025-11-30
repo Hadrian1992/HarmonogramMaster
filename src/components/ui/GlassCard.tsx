@@ -19,7 +19,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
                 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl',
                 'rounded-2xl shadow-xl',
                 'border border-white/20 dark:border-slate-700/50',
-                'p-6',
+                'p-4 md:p-6',
                 hoverEffect && 'transition-transform duration-300 hover:scale-[1.01] hover:shadow-2xl',
                 className
             )}

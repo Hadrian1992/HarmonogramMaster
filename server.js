@@ -278,6 +278,306 @@ Przykład: 20:00 → 08:00 = (24 - 20) + 8 = 12 godzin.
     }
 });
 
+// AI Replacement Advisor - combines replacementFinder.js with AI analysis
+app.post('/api/ai/replacement-advisor', authenticateCookie, async (req, res) => {
+    const { employeeName, date, shiftType, schedule, includeContactHours = false } = req.body;
+
+    if (!OPENROUTER_API_KEY) {
+        return res.status(500).json({ error: 'Server missing API Key' });
+    }
+
+    try {
+        // 1. Find employee ID
+        const employee = schedule.employees.find(e => e.name === employeeName);
+        if (!employee) {
+            return res.status(404).json({ error: `Employee "${employeeName}" not found` });
+        }
+
+        // 2. Call replacementFinder.js to get candidates with scores
+        console.log(`Finding replacement for ${employeeName} on ${date} (${shiftType})`);
+        const candidates = await findBestReplacement({
+            date,
+            shiftType,
+            employeeOutId: employee.id,
+            schedule,
+            includeContactHours
+        });
+
+        // 3. Prepare detailed context for AI
+        const monthKey = date.substring(0, 7);
+
+        // Get all employees' current hours for AI context
+        const employeeHoursSummary = schedule.employees.map(emp => {
+            const monthlyHours = Object.values(emp.shifts)
+                .filter(s => s.date.startsWith(monthKey))
+                .reduce((acc, s) => acc + (s.hours || 0), 0);
+            return `- ${emp.name}: ${monthlyHours}h`;
+        }).join('\n');
+
+        const candidatesSummary = candidates.slice(0, 10).map((c, idx) => {
+            const status = c.score <= -10000 ? '❌ ILLEGAL' : c.score < 0 ? '⚠️ Suboptimal' : '✅ Good';
+            return `${idx + 1}. **${c.name}** (Score: ${c.score}) ${status}
+   - Monthly hours: ${c.details.monthlyHours}h
+   - Reasons: ${c.reasons.join(', ') || 'No issues'}`;
+        }).join('\n\n');
+
+        const systemPrompt = `Jesteś ekspertem ds. harmonogramów. Pomagasz znaleźć zastępstwo i proponujesz ALTERNATYWNE SCENARIUSZE.
+
+ZADANIE: Znajdź zastępstwo dla **${employeeName}** na **${date}** (zmiana **${shiftType}**)
+
+WYNIKI ALGORYTMU (replacementFinder.js):
+${candidatesSummary}
+
+OBECNE GODZINY PRACOWNIKÓW (${monthKey}):
+${employeeHoursSummary}
+
+REGUŁY SYSTEMU (KRYTYCZNE):
+1. **Maria Pankowska (Lider)**: NIE pracuje w weekendy, NIE pracuje na nockach (20-8), TYLKO zmiany 8:00-20:00
+2. **11h Daily Rest**: ILLEGAL jeśli przerwa między zmianami < 11h
+3. **2 Nocki → 2 Dni Wolne**: Po 2 nockach pod rząd zalecane 2 dni wolnego
+4. **Weekend Fairness**: Sprawdzamy czy pracownik pracował w zeszły weekend
+5. **Balansowanie godzin**: Unikamy przypisywania osobom z > średnia +10h
+6. **Max godziny**: >160h = przekroczenie normy
+
+TWOJE ZADANIA:
+1. **Wyjaśnij wyniki**: Dlaczego niektórzy mają niskie oceny?
+2. **Wybierz najlepszego kandydata**: Kto jest najbezpieczniejszy wybór?
+3. **ZAPROPONUJ ALTERNATYWY**: 
+   - Co jeśli przeniesiemy zmianę X pracownika A na pracownika B?
+   - Oblicz nowe godziny (A, B)
+   - Sprawdź czy reguły są przestrzegane
+   - Zaproponuj, NIE wykonuj (użytkownik decyduje)
+
+PRZYKŁAD ALTERNATYWY:
+"Pracownik B ma ocenę -50 bo pracował w zeszły weekend. Alternatywnie:
+- Przeniesiemy nockę B z 14.12 (20-8) → Pracownik D
+- Pracownik B weźmie zastępstwo za ${employeeName} (${shiftType})
+Sprawdzenie:
+- D: 130h + 12h = 142h ✅
+- B: 155h - 12h + 8h = 151h ✅
+- Żadne reguły nie naruszone ✅"
+
+FORMAT ODPOWIEDZI:
+- Używaj Markdown
+- Bądź konkretny (daty, nazwiska, godziny)
+- Lista kandydatów: najlepsi na górze
+- Sekcja "🔄 Alternatywne scenariusze" na końcu
+`;
+
+        // 4. Call AI
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'http://localhost:3000',
+                'X-Title': 'HarmonogramMaster-ReplacementAdvisor'
+            },
+            body: JSON.stringify({
+                model: 'google/gemini-2.0-flash-exp:free',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `Przeanalizuj i zaproponuj rozwiązania.` }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`OpenRouter API error: ${response.status} ${errText}`);
+        }
+
+        const data = await response.json();
+        const aiAnalysis = data.choices[0]?.message?.content || 'Brak odpowiedzi od AI.';
+
+        // 5. Return combined result
+        res.json({
+            candidates: candidates.slice(0, 10), // Top 10
+            aiAnalysis,
+            employeeName,
+            date,
+            shiftType
+        });
+
+    } catch (error) {
+        console.error('Replacement Advisor Error:', error);
+        res.status(500).json({ error: 'Failed to analyze replacements' });
+    }
+});
+
+// AI Schedule Helper - helps plan upcoming days/weeks
+app.post('/api/ai/schedule-helper', authenticateCookie, async (req, res) => {
+    const { schedule, startDate, endDate, staffingRules } = req.body;
+
+    if (!OPENROUTER_API_KEY) {
+        return res.status(500).json({ error: 'Server missing API Key' });
+    }
+
+    try {
+        // 1. Calculate current hours for each employee (up to startDate)
+        const monthKey = startDate.substring(0, 7);
+        const employeeHours = schedule.employees.map(emp => {
+            const hours = Object.values(emp.shifts)
+                .filter(s => s.date.startsWith(monthKey) && s.date < startDate)
+                .reduce((acc, s) => acc + (s.hours || 0), 0);
+
+            const contactHours = Object.values(emp.shifts)
+                .filter(s => s.date.startsWith(monthKey) && s.date < startDate)
+                .reduce((acc, s) => acc + (s.contactHours || (s.type === 'K' ? s.hours : 0) || 0), 0);
+
+            const manualContact = emp.monthlyContactHours?.[monthKey] || 0;
+            const totalHours = hours + contactHours + manualContact;
+
+            return { name: emp.name, hours, contactHours, manualContact, totalHours };
+        });
+
+        // 2. Get recent schedule (last 14 days before startDate)
+        const recentDays = [];
+        for (let i = 14; i > 0; i--) {
+            const date = new Date(startDate);
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+
+            if (dateStr.startsWith(monthKey)) {
+                const dayShifts = schedule.employees.map(emp => {
+                    const shift = emp.shifts[dateStr];
+                    if (!shift || !shift.type || shift.type === 'W') return null;
+                    return `${emp.name}: ${shift.type === 'WORK' ? `${shift.startHour}-${shift.endHour}` : shift.type}`;
+                }).filter(Boolean);
+
+                if (dayShifts.length > 0) {
+                    recentDays.push(`- ${dateStr}: ${dayShifts.join(', ')}`);
+                }
+            }
+        }
+
+        // 3. Get employee preferences
+        const employeePreferences = schedule.employees.map(emp => {
+            const prefs = [];
+            if (emp.preferences) prefs.push(emp.preferences);
+            if (emp.notes) prefs.push(`Notes: ${emp.notes}`);
+            return prefs.length > 0 ? `- ${emp.name}: ${prefs.join('; ')}` : null;
+        }).filter(Boolean);
+
+        // 4. Build comprehensive system prompt
+        const systemPrompt = `Jesteś ekspertem ds. układania harmonogramów pracy. Pomagasz zaplanować zmiany na nadchodzące dni.
+
+ZADANIE: Zaproponuj układ zmian na **${startDate}** do **${endDate}**
+
+═══════════════════════════════════════════════════════════
+OBECNY STAN GRAFIKU
+═══════════════════════════════════════════════════════════
+
+OSTATNIE 14 DNI (kontekst):
+${recentDays.length > 0 ? recentDays.join('\n') : 'Brak danych'}
+
+GODZINY PRACOWNIKÓW DO TEJ PORY (${monthKey}):
+${employeeHours.map(e => `- ${e.name}: ${e.totalHours}h (${e.hours}h pracy + ${e.contactHours + e.manualContact}h kontakty)`).join('\n')}
+
+${employeePreferences.length > 0 ? `PREFERENCJE PRACOWNIKÓW:\n${employeePreferences.join('\n')}` : ''}
+
+═══════════════════════════════════════════════════════════
+REGUŁY SYSTEMU (BEZWZGLĘDNIE OBOWIĄZUJĄCE)
+═══════════════════════════════════════════════════════════
+
+**1. KODEKS PRACY (POLSKA):**
+- Max 40h/tydzień (średnio)
+- Min 11h odpoczynku między zmianami (ILLEGAL jeśli < 11h)
+- Praca 24/7 - placówka wychowawcza (musi być pokrycie całą dobę)
+
+**2. MARIA PANKOWSKA (LIDER) - SPECJALNE OGRANICZENIA:**
+- NIE pracuje w weekendy (sobota/niedziela)
+- Może pracować TYLKO zmiany w przedziale 8:00-20:00
+- Przykłady dozwolonych zmian: 8-14, 8-15, 8-16, 8-20, 10-16, 10-20, 12-20
+- ZABRONIONE: nocki (20-8), wczesne poranne (<8:00), późne wieczorne (>20:00)
+
+**3. REGUŁY NOCNYCH ZMIAN:**
+- Po 2 nockach pod rząd → zalecane 2 dni wolnego
+- Po jednej nocce → zalecany dzień wolny
+- Nocka to zmiana 20-8 (zaczyna 20:00, kończy 8:00 następnego dnia)
+
+**4. WEEKEND FAIRNESS:**
+- Sprawdzaj kto pracował w ostatni weekend
+- Unikaj przypisywania tej samej osobie 2 weekendy pod rząd
+
+**5. BALANSOWANIE GODZIN:**
+- Średnia: ${(employeeHours.reduce((sum, e) => sum + e.totalHours, 0) / employeeHours.length).toFixed(1)}h
+- Preferuj osoby z mniejszą liczbą godzin
+- Unikaj przekroczenia 160h/miesiąc (MAX limit)
+
+**6. STRAŻNIK OBSADY:**
+${staffingRules ? `
+- Minimum RANO (6-14): ${staffingRules.minStaffMorning} osób
+- Minimum WIECZÓR (14-22): ${staffingRules.minStaffEvening} osób
+- Minimum NOC (22-6): ${staffingRules.minStaffNight} osób
+${staffingRules.customRules ? `- Dodatkowe: ${staffingRules.customRules}` : ''}
+` : '- Zalecane: minimum 2 osoby w dzień, 1 w nocy'}
+
+═══════════════════════════════════════════════════════════
+FORMAT ODPOWIEDZI
+═══════════════════════════════════════════════════════════
+
+Dla każdego dnia podaj:
+
+**DD.MM (dzień tygodnia):**
+- Pracownik 1: Zmiana (godziny) - uzasadnienie
+- Pracownik 2: Zmiana (godziny) - uzasadnienie
+- ...
+
+**Podsumowanie:**
+- ✅ Pokrycie 24h
+- ✅ Wszystkie reguły przestrzegane
+- ⚠️ Ewentualne ostrzeżenia
+
+PRZYKŁAD:
+**08.12 (Czwartek):**
+- Maria Pankowska: 8-16 (8h) - ma najmniej godzin (125h), dzień roboczy OK
+- Paulina Rumińska: 8-20 (12h) - wyrównanie godzin
+- Agnieszka Olszewska: 20-8 (12h nocka) - ostatnia nocka 5.12, 11h+ rest OK
+
+✅ Pokrycie: 24h (8-8 następnego dnia)
+✅ Wszystkie reguły OK
+`;
+
+        // 5. Call AI
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'http://localhost:3000',
+                'X-Title': 'HarmonogramMaster-ScheduleHelper'
+            },
+            body: JSON.stringify({
+                model: 'google/gemini-2.0-flash-exp:free',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `Zaproponuj optymalne rozplanowanie na ${startDate} - ${endDate}.` }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`OpenRouter API error: ${response.status} ${errText}`);
+        }
+
+        const data = await response.json();
+        const suggestion = data.choices[0]?.message?.content || 'Brak odpowiedzi od AI.';
+
+        // 6. Return suggestion
+        res.json({
+            suggestion,
+            startDate,
+            endDate
+        });
+
+    } catch (error) {
+        console.error('Schedule Helper Error:', error);
+        res.status(500).json({ error: 'Failed to generate schedule suggestion' });
+    }
+});
+
 // 3. DATA ROUTES (Protected)
 app.get('/api/data', authenticateCookie, (req, res) => {
     try {

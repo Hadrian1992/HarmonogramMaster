@@ -27,10 +27,10 @@ export const WeeklyTimeline: React.FC = () => {
     return (
         <div className="space-y-4">
             {/* Header & Week Selector */}
-            <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
+            <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700 shadow-sm">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">Timeline Tygodniowy</h2>
-                    <p className="text-sm text-gray-600">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Timeline Tygodniowy</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                         {format(selectedWeek, 'dd MMM yyyy', { locale: pl })} - {format(addWeeks(selectedWeek, 1), 'dd MMM yyyy', { locale: pl })}
                     </p>
                 </div>
@@ -53,20 +53,20 @@ export const WeeklyTimeline: React.FC = () => {
                     <div className="flex gap-2">
                         <button
                             onClick={() => setSelectedWeek(prev => subWeeks(prev, 1))}
-                            className="p-2 hover:bg-gray-100 rounded"
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300"
                             title="Poprzedni tydzień"
                         >
                             <ChevronLeft size={20} />
                         </button>
                         <button
                             onClick={() => setSelectedWeek(getWeekStart(new Date(schedule.year, schedule.month - 1, 1)))}
-                            className="px-3 py-2 text-sm font-medium hover:bg-gray-100 rounded"
+                            className="px-3 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
                         >
                             Bieżący miesiąc
                         </button>
                         <button
                             onClick={() => setSelectedWeek(prev => addWeeks(prev, 1))}
-                            className="p-2 hover:bg-gray-100 rounded"
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300"
                             title="Następny tydzień"
                         >
                             <ChevronRight size={20} />
@@ -76,15 +76,15 @@ export const WeeklyTimeline: React.FC = () => {
             </div>
 
             {/* Timeline Grid */}
-            <div className="bg-white rounded-lg border shadow-sm overflow-x-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm overflow-x-auto">
                 <table className="min-w-full text-xs">
-                    <thead className="bg-gray-50 sticky top-0">
+                    <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
                         <tr>
-                            <th className="px-3 py-2 text-left font-medium text-gray-700 border-r">
+                            <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300 border-r dark:border-gray-700">
                                 Dzień
                             </th>
                             {hours.map(hour => (
-                                <th key={hour} className="px-2 py-2 text-center font-medium text-gray-700 border-r min-w-[60px]">
+                                <th key={hour} className="px-2 py-2 text-center font-medium text-gray-700 dark:text-gray-300 border-r dark:border-gray-700 min-w-[60px]">
                                     {hour}:00
                                 </th>
                             ))}
@@ -93,21 +93,21 @@ export const WeeklyTimeline: React.FC = () => {
                     <tbody>
                         {coverage.map((day, dayIdx) => (
                             <tr key={day.date} className={clsx(
-                                "border-t",
-                                dayIdx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                                "border-t dark:border-gray-700",
+                                dayIdx % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50/50 dark:bg-gray-900/50"
                             )}>
-                                <td className="px-3 py-3 font-medium text-gray-900 border-r whitespace-nowrap">
+                                <td className="px-3 py-3 font-medium text-gray-900 dark:text-gray-100 border-r dark:border-gray-700 whitespace-nowrap">
                                     <div>{day.dayName}</div>
-                                    <div className="text-gray-500 text-xs">{format(new Date(day.date), 'dd.MM')}</div>
+                                    <div className="text-gray-500 dark:text-gray-400 text-xs">{format(new Date(day.date), 'dd.MM')}</div>
                                 </td>
                                 {day.hours.map(hourData => (
                                     <td
                                         key={hourData.hour}
                                         className={clsx(
-                                            "border-r px-1 py-2 text-center",
-                                            hourData.hasGap && "bg-red-100 text-red-900",
-                                            !hourData.hasGap && hourData.employees.length > 0 && "bg-green-50",
-                                            hourData.employees.length === 0 && "bg-gray-100"
+                                            "border-r dark:border-gray-700 px-1 py-2 text-center",
+                                            hourData.hasGap && "bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200",
+                                            !hourData.hasGap && hourData.employees.length > 0 && "bg-green-50 dark:bg-green-900/20",
+                                            hourData.employees.length === 0 && "bg-gray-100 dark:bg-gray-800"
                                         )}
                                         title={
                                             hourData.hasGap
@@ -118,16 +118,16 @@ export const WeeklyTimeline: React.FC = () => {
                                         {hourData.employees.length > 0 ? (
                                             <div className="space-y-0.5">
                                                 {hourData.employees.map(emp => (
-                                                    <div key={emp.id} className="truncate font-medium">
+                                                    <div key={emp.id} className="truncate font-medium text-gray-900 dark:text-gray-200">
                                                         {getInitials(emp.name)}
                                                     </div>
                                                 ))}
                                                 {hourData.hasGap && (
-                                                    <div className="text-red-600 font-bold">⚠</div>
+                                                    <div className="text-red-600 dark:text-red-400 font-bold">⚠</div>
                                                 )}
                                             </div>
                                         ) : (
-                                            <span className="text-gray-400">-</span>
+                                            <span className="text-gray-400 dark:text-gray-600">-</span>
                                         )}
                                     </td>
                                 ))}
@@ -138,40 +138,40 @@ export const WeeklyTimeline: React.FC = () => {
             </div>
 
             {/* Legend */}
-            <div className="bg-white p-4 rounded-lg border shadow-sm">
-                <h3 className="font-semibold text-gray-900 mb-3">Legenda</h3>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700 shadow-sm">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Legenda</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-green-50 border rounded"></div>
-                        <span>Wystarczająco osób</span>
+                        <div className="w-8 h-8 bg-green-50 dark:bg-green-900/20 border dark:border-green-800 rounded"></div>
+                        <span className="text-gray-700 dark:text-gray-300">Wystarczająco osób</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-red-100 border rounded flex items-center justify-center">⚠</div>
-                        <span>Dziura (za mało osób)</span>
+                        <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 border dark:border-red-800 rounded flex items-center justify-center text-red-600 dark:text-red-400">⚠</div>
+                        <span className="text-gray-700 dark:text-gray-300">Dziura (za mało osób)</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gray-100 border rounded"></div>
-                        <span>Brak pracowników</span>
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 rounded"></div>
+                        <span className="text-gray-700 dark:text-gray-300">Brak pracowników</span>
                     </div>
-                    <div className="text-gray-600">
+                    <div className="text-gray-600 dark:text-gray-400">
                         Inicjały = pracownicy na zmianie
                     </div>
                 </div>
-                <div className="mt-3 text-xs text-gray-600">
+                <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
                     <p>• Dzień (8-20): wymagane minimum 2 osoby</p>
                     <p>• Noc (20-8): wymagane minimum 1 osoba</p>
                 </div>
             </div>
 
             {/* Employee list */}
-            <div className="bg-white p-4 rounded-lg border shadow-sm">
-                <h3 className="font-semibold text-gray-900 mb-3">Pracownicy ({schedule.employees.length})</h3>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700 shadow-sm">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Pracownicy ({schedule.employees.length})</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-sm">
                     {schedule.employees.map(emp => (
                         <div key={emp.id} className="flex items-center gap-2">
-                            <span className="font-medium text-gray-700">{getInitials(emp.name)}</span>
-                            <span className="text-gray-600">-</span>
-                            <span className="text-gray-900">{emp.name}</span>
+                            <span className="font-medium text-gray-700 dark:text-gray-300">{getInitials(emp.name)}</span>
+                            <span className="text-gray-600 dark:text-gray-500">-</span>
+                            <span className="text-gray-900 dark:text-gray-200">{emp.name}</span>
                         </div>
                     ))}
                 </div>

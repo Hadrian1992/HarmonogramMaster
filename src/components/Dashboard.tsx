@@ -75,7 +75,7 @@ export const Dashboard: React.FC = () => {
     ];
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen">
+        <div className="p-2 md:p-6 min-h-screen">
             <PageHeader
                 title="Dashboard Statystyk"
                 description={`Podsumowanie miesiąca: ${monthName}`}

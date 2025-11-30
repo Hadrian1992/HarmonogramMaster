@@ -719,13 +719,13 @@ export const ScheduleGrid: React.FC = () => {
                                         </React.Fragment>
                                     );
                                 })}
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-2 dark:bg-meta-4">
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100 dark:bg-slate-700">
                                     L. Zmian
                                 </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-2 dark:bg-meta-4">
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100 dark:bg-slate-700">
                                     Godz. K.
                                 </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-2 dark:bg-meta-4 z-10 border-l-2 border-gray-300 dark:border-strokedark">
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-100 dark:bg-slate-700 z-10 border-l-2 border-gray-300 dark:border-slate-600">
                                     Suma
                                 </th>
                             </tr>
@@ -772,9 +772,11 @@ export const ScheduleGrid: React.FC = () => {
                                                     <span className="text-gray-900 dark:text-white">{emp.name}</span>
                                                     <span className={clsx(
                                                         "text-xs px-2 py-0.5 rounded font-semibold",
-                                                        totalWithContact > 152
+                                                        totalWithContact > 160
                                                             ? "bg-red-500 text-white"
-                                                            : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
+                                                            : totalWithContact >= 150
+                                                                ? "bg-green-500 text-white"
+                                                                : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
                                                     )}>
                                                         {totalWithContact}h
                                                     </span>
@@ -922,7 +924,7 @@ export const ScheduleGrid: React.FC = () => {
                                                     <span>{contactHours}h</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-center font-bold sticky right-0 bg-white dark:bg-slate-900 z-10 border-l-2 border-gray-300 dark:border-strokedark text-gray-900 dark:text-white">
+                                            <td className="px-4 py-3 whitespace-nowrap text-center font-bold sticky right-0 bg-white dark:bg-slate-900 z-10 border-l-2 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white">
                                                 {totalWithContact}h
                                             </td>
                                         </tr>

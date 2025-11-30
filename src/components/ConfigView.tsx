@@ -134,7 +134,7 @@ export const ConfigView = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                 {/* Karta 1: Strażnik Obsady (Lewa strona) */}
-                <div className="bg-white dark:bg-boxdark p-6 rounded-xl shadow-lg border border-gray-100 dark:border-strokedark transition-all hover:shadow-xl">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 transition-all hover:shadow-xl">
                     <div className="flex items-center gap-4 mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
                         <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl shadow-inner">
                             <Shield className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
@@ -162,7 +162,7 @@ export const ConfigView = () => {
                                 min="0"
                                 value={minStaffing.morning}
                                 onChange={(e) => setMinStaffing({ ...minStaffing, morning: parseInt(e.target.value) || 0 })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-mono text-center text-lg dark:bg-form-input dark:border-form-strokedark dark:text-white"
+                                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-mono text-center text-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             />
                         </div>
                         <div className="space-y-2">
@@ -174,7 +174,7 @@ export const ConfigView = () => {
                                 min="0"
                                 value={minStaffing.afternoon}
                                 onChange={(e) => setMinStaffing({ ...minStaffing, afternoon: parseInt(e.target.value) || 0 })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-mono text-center text-lg dark:bg-form-input dark:border-form-strokedark dark:text-white"
+                                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-mono text-center text-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             />
                         </div>
                         <div className="space-y-2">
@@ -186,7 +186,7 @@ export const ConfigView = () => {
                                 min="0"
                                 value={minStaffing.night}
                                 onChange={(e) => setMinStaffing({ ...minStaffing, night: parseInt(e.target.value) || 0 })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-mono text-center text-lg dark:bg-form-input dark:border-form-strokedark dark:text-white"
+                                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-mono text-center text-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             />
                         </div>
                     </div>
@@ -199,7 +199,7 @@ export const ConfigView = () => {
                             value={customRule}
                             onChange={(e) => setCustomRule(e.target.value)}
                             placeholder="Np. Pamiętaj, że w piątki musi być Kasia. Nie łącz zmian nocnych z porannymi. W weekendy minimum 2 osoby."
-                            className="w-full p-4 border-2 border-gray-200 rounded-xl h-32 resize-none text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all dark:bg-form-input dark:border-form-strokedark dark:text-white placeholder-gray-400"
+                            className="w-full p-4 border-2 border-gray-200 rounded-xl h-32 resize-none text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400"
                         />
                     </div>
 
@@ -214,7 +214,7 @@ export const ConfigView = () => {
                 </div>
 
                 {/* Karta 2: Synchronizacja (Prawa strona) */}
-                <div className="bg-white dark:bg-boxdark p-6 rounded-xl shadow-lg border border-gray-100 dark:border-strokedark transition-all hover:shadow-xl">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 transition-all hover:shadow-xl">
                     <div className="flex items-center gap-4 mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
                         <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl shadow-inner">
                             <Server className="w-8 h-8 text-green-600 dark:text-green-400" />
@@ -242,7 +242,7 @@ export const ConfigView = () => {
                                 placeholder="Automatyczny (domyślny)"
                                 value={serverUrl}
                                 onChange={(e) => setServerUrl(e.target.value)}
-                                className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all dark:bg-form-input dark:border-form-strokedark dark:text-white"
+                                className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             />
                             <p className="text-[10px] text-gray-400 mt-1 ml-1">Zostaw puste, aby użyć wykrytego adresu: {DEFAULT_SERVER_URL}</p>
                         </div>
@@ -273,10 +273,10 @@ export const ConfigView = () => {
 
                         {status.message && (
                             <div className={`p-4 rounded-xl text-sm flex items-center gap-3 animate-fade-in shadow-sm ${status.type === 'error'
-                                    ? 'bg-red-50 text-red-700 border border-red-100'
-                                    : status.type === 'success'
-                                        ? 'bg-green-50 text-green-700 border border-green-100'
-                                        : 'bg-blue-50 text-blue-700 border border-blue-100'
+                                ? 'bg-red-50 text-red-700 border border-red-100'
+                                : status.type === 'success'
+                                    ? 'bg-green-50 text-green-700 border border-green-100'
+                                    : 'bg-blue-50 text-blue-700 border border-blue-100'
                                 }`}>
                                 {status.type === 'error' ? <AlertTriangle className="w-5 h-5 shrink-0" /> :
                                     status.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> :

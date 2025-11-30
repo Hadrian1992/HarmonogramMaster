@@ -484,17 +484,17 @@ function MainLayout() {
             <ScheduleGrid />
 
             {holidays.length > 0 && (
-              <div className="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-400">
-                <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-yellow-600" />
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow border-l-4 border-yellow-400 dark:border-yellow-600">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                   Święta i dni ważne w tym miesiącu:
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {holidays.map(h => (
-                    <div key={h.date} className={`flex items-center gap-2 p-2 rounded ${h.type === 'PUBLIC' ? 'bg-red-50 text-red-800' : 'bg-blue-50 text-blue-800'}`}>
+                    <div key={h.date} className={`flex items-center gap-2 p-2 rounded ${h.type === 'PUBLIC' ? 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200'}`}>
                       <span className="font-bold">{h.date.split('-')[2]}:</span>
                       <span>{h.name}</span>
-                      {h.type === 'PUBLIC' && <span className="text-xs bg-red-200 px-1.5 py-0.5 rounded-full ml-auto">Wolne</span>}
+                      {h.type === 'PUBLIC' && <span className="text-xs bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-100 px-1.5 py-0.5 rounded-full ml-auto">Wolne</span>}
                     </div>
                   ))}
                 </div>
@@ -502,7 +502,7 @@ function MainLayout() {
             )}
 
             {validationErrors.length === 0 ? (
-              <div className="flex items-center gap-2 text-green-600 bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
                 <CheckCircle className="w-5 h-5" />
                 <span className="font-medium">Brak błędów w harmonogramie!</span>
               </div>
@@ -511,7 +511,7 @@ function MainLayout() {
                 {/* Errors */}
                 {validationErrors.filter(err => err.severity === 'ERROR' || err.type === 'error').length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-red-700 flex items-center gap-1">
+                    <h4 className="text-sm font-semibold text-red-700 dark:text-red-300 flex items-center gap-1">
                       <AlertTriangle size={14} /> Błędy ({validationErrors.filter(err => err.severity === 'ERROR' || err.type === 'error').length})
                     </h4>
                     {validationErrors
@@ -519,7 +519,7 @@ function MainLayout() {
                       .map((err, idx) => {
                         const empName = err.employeeName || schedule.employees.find(e => e.id === err.employeeId)?.name || 'Nieznany';
                         return (
-                          <div key={idx} className="flex items-start gap-2 text-red-600 text-sm bg-red-50 p-2 rounded">
+                          <div key={idx} className="flex items-start gap-2 text-red-600 dark:text-red-300 text-sm bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-800/50">
                             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                             <div>
                               <span className="font-medium">{empName}</span>: {err.message}
@@ -533,7 +533,7 @@ function MainLayout() {
                 {/* Warnings */}
                 {validationErrors.filter(err => err.type === 'warning').length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-yellow-700 flex items-center gap-1">
+                    <h4 className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 flex items-center gap-1">
                       <AlertTriangle size={14} /> Ostrzeżenia ({validationErrors.filter(err => err.type === 'warning').length})
                     </h4>
                     {validationErrors
@@ -541,7 +541,7 @@ function MainLayout() {
                       .map((err, idx) => {
                         const empName = err.employeeName || schedule.employees.find(e => e.id === err.employeeId)?.name || 'Nieznany';
                         return (
-                          <div key={idx} className="flex items-start gap-2 text-yellow-700 text-sm bg-yellow-50 p-2 rounded">
+                          <div key={idx} className="flex items-start gap-2 text-yellow-700 dark:text-yellow-300 text-sm bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-100 dark:border-yellow-800/50">
                             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                             <div>
                               <span className="font-medium">{empName}</span>: {err.message}
@@ -555,7 +555,7 @@ function MainLayout() {
                 {/* Info */}
                 {validationErrors.filter(err => err.type === 'info').length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-blue-700 flex items-center gap-1">
+                    <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
                       ℹ️ Informacje ({validationErrors.filter(err => err.type === 'info').length})
                     </h4>
                     {validationErrors
@@ -563,7 +563,7 @@ function MainLayout() {
                       .map((err, idx) => {
                         const empName = err.employeeName || schedule.employees.find(e => e.id === err.employeeId)?.name || 'Nieznany';
                         return (
-                          <div key={idx} className="flex items-start gap-2 text-blue-700 text-sm bg-blue-50 p-2 rounded">
+                          <div key={idx} className="flex items-start gap-2 text-blue-700 dark:text-blue-300 text-sm bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-100 dark:border-blue-800/50">
                             <span className="mt-0.5">ℹ️</span>
                             <div>
                               <span className="font-medium">{empName}</span>: {err.message}

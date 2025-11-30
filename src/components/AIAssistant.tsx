@@ -385,6 +385,44 @@ export const AIAssistant: React.FC = () => {
 
                     {/* Input Area */}
                     <div className="p-4 bg-white dark:bg-gray-900 border-t dark:border-gray-700">
+                        {/* Quick Actions */}
+                        <div className="mb-3 flex gap-2 overflow-x-auto">
+                            <button
+                                onClick={() => {
+                                    if (currentSessionId) {
+                                        addMessage(currentSessionId, {
+                                            id: Date.now().toString(),
+                                            text: '🎯 **AI Asystent Zastępstw**\n\nMożesz teraz zapytać mnie w naturalny sposób!\n\n**Przykłady:**\n- "Znajdź zastępstwo dla Pauliny na 15 grudnia 14-22"\n- "Kto może zastąpić Marię jutro na nocce?"\n- "Pokaż mi kandydatów na zmianę 8-16 w piątek"\n\n💡 **Co potrafię:**\n- Analizuję reguły (Kodeks Pracy, limity godzin)\n- Proponuję alternatywne scenariusze\n- Obliczam wpływ zmian na godziny pracowników\n- Prowadzę rozmowę - możesz zadawać pytania!\n\nSpróbuj! 🚀',
+                                            sender: 'ai',
+                                            timestamp: new Date()
+                                        });
+                                    }
+                                }}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-sm whitespace-nowrap"
+                                title="AI Asystent Zastępstw"
+                            >
+                                <MessageCircle size={14} />
+                                <span>🔍 Zastępstwa</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (currentSessionId) {
+                                        addMessage(currentSessionId, {
+                                            id: Date.now().toString(),
+                                            text: '📅 **AI Pomocnik Układania Grafiku**\n\nPomogę Ci zaplanować nadchodzące dni/tygodnie!\n\n**Przykłady:**\n- "Zaproponuj układ na 8-10 grudnia"\n- "Zaplanuj kolejny tydzień"\n- "Pomóż ułożyć 15-20.12"\n\n💡 **Co biorę pod uwagę:**\n- Obecne godziny pracowników\n- Reguły Kodeksu Pracy (40h/tydzień, 11h odpoczynku)\n- Specjalne ograniczenia (Maria: NIE weekendy, TYLKO 8-20)\n- Preferencje pracowników\n- Strażnik Obsady (minimalne liczby osób)\n- Weekend Fairness, balansowanie godzin\n\n✅ **Dla każdego dnia otrzymasz:**\n- Propozycję zmian\n- Uzasadnienie wyboru\n- Sprawdzenie zgodności z regułami\n\nSpróbuj! 🚀',
+                                            sender: 'ai',
+                                            timestamp: new Date()
+                                        });
+                                    }
+                                }}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs rounded-lg hover:from-green-600 hover:to-teal-600 transition-all shadow-sm whitespace-nowrap"
+                                title="AI Pomocnik Układania"
+                            >
+                                <MessageCircle size={14} />
+                                <span>📅 Układanie</span>
+                            </button>
+                        </div>
+
                         <div className="relative flex items-center gap-2">
                             <input
                                 type="text"
