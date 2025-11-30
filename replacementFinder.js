@@ -9,12 +9,18 @@ const SCORING = {
 };
 
 const getShiftHours = (type) => {
-    if (type === '8-14') return { start: 8, end: 14 }; // 6h
-    if (type === '8-15') return { start: 8, end: 15 }; // 7h
-    if (type === '8-16') return { start: 8, end: 16 }; // 8h
-    if (type === '8-20') return { start: 8, end: 20 }; // 12h
-    if (type === '14-20') return { start: 14, end: 20 }; // 6h
-    if (type === '20-8') return { start: 20, end: 8 }; // 12h (Night)
+    // Jeśli to specjalny typ (W, L4, etc.), zwróć null
+    if (!type || type.length < 3) return null;
+
+    // Parsuj format "X-Y" lub "X/Y"
+    const match = type.match(/^(\d{1,2})[-/](\d{1,2})$/);
+    if (match) {
+        const start = parseInt(match[1], 10);
+        const end = parseInt(match[2], 10);
+        return { start, end };
+    }
+
+    // Jeśli nie pasuje do wzorca, zwróć null
     return null;
 };
 
@@ -60,6 +66,35 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, incl
         return { score: SCORING.ILLEGAL, reasons: [legal.reason] };
     }
 
+    // 0.5. Specjalne ograniczenia dla lidera (Maria Pankowska)
+    if (employee.name === 'Maria Pankowska') {
+        // Maria nie pracuje w weekendy
+        if (isWeekend(date) && proposedShiftType !== 'W') {
+            return { score: SCORING.ILLEGAL, reasons: ['Lider nie pracuje w weekendy'] };
+        }
+
+        // Maria może pracować tylko w zakresie 8:00-20:00
+        const shiftHours = getShiftHours(proposedShiftType);
+        if (shiftHours) {
+            const { start, end } = shiftHours;
+
+            // Sprawdź czy zmiana zaczyna się przed 8 lub kończy po 20
+            if (start < 8) {
+                return { score: SCORING.ILLEGAL, reasons: ['Lider nie pracuje przed 8:00'] };
+            }
+
+            // Dla zmian nocnych (start > end) lub kończących się po 20
+            if (start > end) {
+                // To nocka (np. 20-8)
+                return { score: SCORING.ILLEGAL, reasons: ['Lider nie pracuje na zmianach nocnych'] };
+            }
+
+            if (end > 20) {
+                return { score: SCORING.ILLEGAL, reasons: ['Lider nie pracuje po 20:00'] };
+            }
+        }
+    }
+
     const prevDateStr = format(subDays(date, 1), 'yyyy-MM-dd');
     const prevPrevDateStr = format(subDays(date, 2), 'yyyy-MM-dd');
     const prevShift = employee.shifts[prevDateStr];
@@ -84,6 +119,7 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, incl
         }
     }
 
+
     // 3. Weekend Fairness
     if (isWeekend(date)) {
         const lastSat = subDays(date, 7);
@@ -91,13 +127,27 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, incl
         const lastSatShift = employee.shifts[format(lastSat, 'yyyy-MM-dd')];
         const lastSunShift = employee.shifts[format(lastSun, 'yyyy-MM-dd')];
 
-        if (lastSatShift || lastSunShift) {
+        // Sprawdź czy FAKTYCZNIE pracował (nie wolne i nie puste pole)
+        const workedLastSat = lastSatShift && lastSatShift.type && lastSatShift.type !== 'W';
+        const workedLastSun = lastSunShift && lastSunShift.type && lastSunShift.type !== 'W';
+
+        if (workedLastSat || workedLastSun) {
             if (proposedShiftType === 'W') {
                 score += SCORING.PREFERRED;
-                reasons.push('Pracował w zeszły weekend (sprawiedliwość)');
+                if (workedLastSat && workedLastSun) {
+                    reasons.push('Pracował cały zeszły weekend (sprawiedliwość)');
+                } else {
+                    reasons.push('Pracował w zeszły weekend (sprawiedliwość)');
+                }
             } else {
-                score += SCORING.AVOID;
-                reasons.push('Pracował w zeszły weekend');
+                // Większa kara za cały weekend niż za jeden dzień
+                if (workedLastSat && workedLastSun) {
+                    score += SCORING.AVOID * 1.5; // -75 zamiast -50
+                    reasons.push('Pracował cały zeszły weekend');
+                } else {
+                    score += SCORING.AVOID * 0.5; // -25 zamiast -50
+                    reasons.push('Pracował w zeszły weekend (1 dzień)');
+                }
             }
         }
     }
