@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, Sparkles, User, Bot, Settings, Save, History, Plus, Trash2, MessageCircle } from 'lucide-react';
+import { MessageSquare, Send, X, Sparkles, User, Bot, Settings, Save, History, Plus, Trash2, MessageCircle, Copy } from 'lucide-react';
 import { useScheduleStore } from '../store/useScheduleStore';
 import { useChatStore, type Message } from '../store/useChatStore';
 import { askAI } from '../utils/aiService';
@@ -345,7 +345,21 @@ export const AIAssistant: React.FC = () => {
                                                 : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm border dark:border-gray-700 rounded-tl-sm'
                                                 }`}
                                         >
-                                            {msg.text}
+                                            <div className="relative group/msg">
+                                                {msg.text}
+                                                {msg.sender === 'ai' && (
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(msg.text);
+                                                            // Optional: Show toast or temporary icon change
+                                                        }}
+                                                        className="absolute -bottom-6 right-0 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover/msg:opacity-100 transition-opacity"
+                                                        title="Kopiuj odpowiedź"
+                                                    >
+                                                        <Copy size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                         <span className="text-[10px] text-gray-400 px-1">
                                             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

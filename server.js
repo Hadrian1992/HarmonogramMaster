@@ -172,7 +172,14 @@ function deanonymize(text, map) {
     let deanonymizedText = text;
     // Iterate over map entries and replace aliases back to real names
     for (const [alias, realName] of Object.entries(map)) {
-        const regex = new RegExp(alias, 'g');
+        // 1. Try exact match
+        let regex = new RegExp(alias, 'g');
+        deanonymizedText = deanonymizedText.replace(regex, realName);
+
+        // 2. Try match with escaped underscore (common in Markdown from LLMs)
+        // Pracownik_A -> Pracownik\_A
+        const escapedAlias = alias.replace('_', '\\\\_'); // Double backslash for regex literal
+        regex = new RegExp(escapedAlias, 'g');
         deanonymizedText = deanonymizedText.replace(regex, realName);
     }
     return deanonymizedText;

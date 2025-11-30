@@ -55,15 +55,61 @@ const checkHardConstraints = (employee, dateStr, proposedShiftType) => {
     return { valid: true };
 };
 
+const checkForwardConstraints = (employee, dateStr, proposedShiftType) => {
+    const date = new Date(dateStr);
+    const nextDateStr = format(addDays(date, 1), 'yyyy-MM-dd');
+    const nextShift = employee.shifts[nextDateStr];
+
+    // Jeśli jutro nie ma zmiany lub jest wolne, nie ma konfliktu
+    if (!nextShift || !nextShift.type || nextShift.type === 'W') {
+        return { valid: true };
+    }
+
+    const proposedHours = getShiftHours(proposedShiftType);
+    const nextHours = getShiftHours(nextShift.type);
+
+    if (!proposedHours || !nextHours) return { valid: true };
+
+    // 1. 11h Daily Rest Check (Today -> Tomorrow)
+    let gap = 0;
+    const proposedEndedNextDay = proposedHours.start > proposedHours.end;
+
+    if (proposedEndedNextDay) {
+        // Zmiana dzisiaj kończy się JUTRO (np. 20-8 kończy się o 8:00 rano jutro)
+        // Jeśli jutrzejsza zmiana zaczyna się np. o 14:00, to gap = 14 - 8 = 6h (ZA MAŁO)
+        gap = nextHours.start - proposedHours.end;
+    } else {
+        // Zmiana dzisiaj kończy się DZISIAJ (np. 14-22)
+        // Jutrzejsza zaczyna się o np. 6:00
+        // Gap = (24 - 22) + 6 = 2 + 6 = 8h (ZA MAŁO)
+        gap = (24 - proposedHours.end) + nextHours.start;
+    }
+
+    if (gap < 11) {
+        return {
+            valid: false,
+            reason: `Naruszenie 11h odpoczynku przed jutrzejszą zmianą (przerwa: ${gap}h)`
+        };
+    }
+
+    return { valid: true };
+};
+
 const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, includeContactHours = false) => {
     let score = 0;
     const reasons = [];
     const date = new Date(dateStr);
 
-    // 0. Hard Constraints Check
+    // 0. Hard Constraints Check (Backwards)
     const legal = checkHardConstraints(employee, dateStr, proposedShiftType);
     if (!legal.valid) {
         return { score: SCORING.ILLEGAL, reasons: [legal.reason] };
+    }
+
+    // 0.1. Hard Constraints Check (Forward - Today -> Tomorrow)
+    const legalForward = checkForwardConstraints(employee, dateStr, proposedShiftType);
+    if (!legalForward.valid) {
+        return { score: SCORING.ILLEGAL, reasons: [legalForward.reason] };
     }
 
     // 0.5. Specjalne ograniczenia dla lidera (Maria Pankowska)

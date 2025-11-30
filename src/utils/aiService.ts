@@ -57,26 +57,26 @@ export async function askAI(
 
     // 2. Pytania o godziny (najwięcej/najmniej)
     if (q.includes('najwięcej godzin') || q.includes('przepracowany')) {
-        const sorted = [...employees].sort((a, b) => getEmployeeTotalHours(b) - getEmployeeTotalHours(a));
+        const sorted = [...employees].sort((a, b) => getEmployeeTotalHours(b, schedule.month, schedule.year) - getEmployeeTotalHours(a, schedule.month, schedule.year));
         const top = sorted[0];
         return {
-            text: `Najwięcej godzin w tym miesiącu ma ${top.name}: ${getEmployeeTotalHours(top)}h.`
+            text: `Najwięcej godzin w tym miesiącu ma ${top.name}: ${getEmployeeTotalHours(top, schedule.month, schedule.year)}h.`
         };
     }
 
     if (q.includes('najmniej godzin')) {
-        const sorted = [...employees].sort((a, b) => getEmployeeTotalHours(a) - getEmployeeTotalHours(b));
+        const sorted = [...employees].sort((a, b) => getEmployeeTotalHours(a, schedule.month, schedule.year) - getEmployeeTotalHours(b, schedule.month, schedule.year));
         const bottom = sorted[0];
         return {
-            text: `Najmniej godzin w tym miesiącu ma ${bottom.name}: ${getEmployeeTotalHours(bottom)}h.`
+            text: `Najmniej godzin w tym miesiącu ma ${bottom.name}: ${getEmployeeTotalHours(bottom, schedule.month, schedule.year)}h.`
         };
     }
 
     // 3. Pytania o konkretnego pracownika
     const foundEmployee = employees.find(e => q.includes(e.name.toLowerCase()));
     if (foundEmployee) {
-        const hours = getEmployeeTotalHours(foundEmployee);
-        const shifts = Object.values(foundEmployee.shifts).filter(s => s.type === 'WORK').length;
+        const hours = getEmployeeTotalHours(foundEmployee, schedule.month, schedule.year);
+        const shifts = Object.values(foundEmployee.shifts).filter(s => s.type === 'WORK' && s.date.startsWith(`${schedule.year}-${String(schedule.month).padStart(2, '0')}`)).length;
         return {
             text: `${foundEmployee.name} ma zaplanowane ${hours}h w ${shifts} zmianach.`
         };
@@ -94,7 +94,7 @@ export async function askAI(
     if (q.includes('urlop') || q.includes('wolne')) {
         let vacationCount = 0;
         employees.forEach(e => {
-            vacationCount += Object.values(e.shifts).filter(s => ['UW', 'UŻ', 'USW'].includes(s.type)).length;
+            vacationCount += Object.values(e.shifts).filter(s => ['UW', 'UŻ', 'USW'].includes(s.type) && s.date.startsWith(`${schedule.year}-${String(schedule.month).padStart(2, '0')}`)).length;
         });
         return {
             text: `W tym miesiącu zaplanowano łącznie ${vacationCount} dni urlopowych dla całego zespołu.`
@@ -116,9 +116,10 @@ export async function askAI(
     );
 }
 
-function getEmployeeTotalHours(employee: Employee): number {
+function getEmployeeTotalHours(employee: Employee, month: number, year: number): number {
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
     return Object.values(employee.shifts).reduce((sum, s) => {
-        if (s.type === 'WORK' || ['L4', 'UW', 'UZ', 'OP', 'UŻ', 'UM', 'USW', 'UB'].includes(s.type)) {
+        if (s.date.startsWith(monthKey) && (s.type === 'WORK' || ['L4', 'UW', 'UZ', 'OP', 'UŻ', 'UM', 'USW', 'UB'].includes(s.type))) {
             return sum + s.hours;
         }
         return sum;
@@ -276,7 +277,7 @@ function generateScheduleContext(schedule: Schedule): string {
     const daysInCurrentMonth = new Date(schedule.year, schedule.month, 0).getDate();
 
     schedule.employees.forEach(emp => {
-        const totalHours = getEmployeeTotalHours(emp);
+        const totalHours = getEmployeeTotalHours(emp, schedule.month, schedule.year);
         context += `PRACOWNIK: ${emp.name} (Suma godzin w bieżącym msc: ${totalHours})\n`;
 
         // Poprzedni miesiąc (ostatnie 7 dni dla kontekstu ciągłości)
