@@ -107,8 +107,19 @@ export const AIAssistant: React.FC = () => {
         setIsTyping(true);
 
         try {
+            // Get current session messages for context
+            const currentSession = sessions.find(s => s.id === currentSessionId);
+            const sessionMessages = currentSession?.messages || [];
+
             // API Key is no longer passed from frontend
-            const response = await askAI(input, schedule, '', model, staffingRules);
+            const response = await askAI(
+                input,
+                schedule,
+                '',
+                model,
+                staffingRules,
+                sessionMessages  // Pass conversation history for context
+            );
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 text: response.text,
@@ -392,7 +403,7 @@ export const AIAssistant: React.FC = () => {
                                     if (currentSessionId) {
                                         addMessage(currentSessionId, {
                                             id: Date.now().toString(),
-                                            text: '🎯 **AI Asystent Zastępstw**\n\nMożesz teraz zapytać mnie w naturalny sposób!\n\n**Przykłady:**\n- "Znajdź zastępstwo dla Pauliny na 15 grudnia 14-22"\n- "Kto może zastąpić Marię jutro na nocce?"\n- "Pokaż mi kandydatów na zmianę 8-16 w piątek"\n\n💡 **Co potrafię:**\n- Analizuję reguły (Kodeks Pracy, limity godzin)\n- Proponuję alternatywne scenariusze\n- Obliczam wpływ zmian na godziny pracowników\n- Prowadzę rozmowę - możesz zadawać pytania!\n\nSpróbuj! 🚀',
+                                            text: '🔍 **AI Asystent Zastępstw**\n\n⚠️ **WAŻNE: Używaj słowa "zastępstwo" w pytaniu!**\n\n✅ **PRAWIDŁOWE pytania:**\n- "Znajdź **zastępstwo** dla M.B na 4 grudnia 8-14"\n- "Kto może **zastąpić** P.R jutro na nocce?"\n- "Szukam **zamiennika** za D.M w piątek 14-22"\n\n❌ **NIE działa bez słowa kluczowego:**\n- "Kto może za M.B jutro?" (brak "zastępstwo")\n- "Szukam kogoś na 4.12" (brak "zastępstwo")\n\n💡 **System AUTOMATYCZNIE sprawdzi:**\n✅ Reguły Kodeksu Pracy (11h odpoczynku)\n✅ Limity godzin (max 160h/miesiąc)\n✅ Nocki (2 nocki → 2 dni wolne)\n✅ Ograniczenia pracowników\n✅ Weekend Fairness\n\n📊 **Otrzymasz:**\n- Lista kandydatów z oceną (Good/Suboptimal/ILLEGAL)\n- Dokładne powody każdej oceny\n- Alternatywne scenariusze\n\nSpróbuj teraz! 🚀',
                                             sender: 'ai',
                                             timestamp: new Date()
                                         });
@@ -409,7 +420,7 @@ export const AIAssistant: React.FC = () => {
                                     if (currentSessionId) {
                                         addMessage(currentSessionId, {
                                             id: Date.now().toString(),
-                                            text: '📅 **AI Pomocnik Układania Grafiku**\n\nPomogę Ci zaplanować nadchodzące dni/tygodnie!\n\n**Przykłady:**\n- "Zaproponuj układ na 8-10 grudnia"\n- "Zaplanuj kolejny tydzień"\n- "Pomóż ułożyć 15-20.12"\n\n💡 **Co biorę pod uwagę:**\n- Obecne godziny pracowników\n- Reguły Kodeksu Pracy (40h/tydzień, 11h odpoczynku)\n- Specjalne ograniczenia (Maria: NIE weekendy, TYLKO 8-20)\n- Preferencje pracowników\n- Strażnik Obsady (minimalne liczby osób)\n- Weekend Fairness, balansowanie godzin\n\n✅ **Dla każdego dnia otrzymasz:**\n- Propozycję zmian\n- Uzasadnienie wyboru\n- Sprawdzenie zgodności z regułami\n\nSpróbuj! 🚀',
+                                            text: '📅 **AI Pomocnik Układania Grafiku**\n\n⚠️ **WAŻNE: Używaj słów "zaplanuj", "zaproponuj" lub "ułóż"!**\n\n✅ **PRAWIDŁOWE pytania:**\n- "**Zaproponuj** układ na 8-10 grudnia"\n- "**Zaplanuj** kolejny tydzień"\n- "Pomóż **ułożyć** grafik na 15-20.12"\n\n❌ **NIE działa bez słowa kluczowego:**\n- "Co z przyszłym tygodniem?" (brak słowa kluczowego)\n- "Grafik na święta" (brak słowa kluczowego)\n\n💡 **System AUTOMATYCZNIE uwzględni:**\n✅ Obecne godziny (nie przekroczy 160h)\n✅ Reguły Kodeksu Pracy (11h odpoczynku)\n✅ Specjalne ograniczenia (Maria: NIE weekendy)\n✅ Weekend Fairness\n✅ Balansowanie godzin w zespole\n\n📊 **Otrzymasz:**\n- Konkretny plan zmian na każdy dzień\n- Uzasadnienie dlaczego ta osoba\n- Raport zgodności z regułami\n\nSpróbuj teraz! 🚀',
                                             sender: 'ai',
                                             timestamp: new Date()
                                         });
@@ -446,6 +457,6 @@ export const AIAssistant: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

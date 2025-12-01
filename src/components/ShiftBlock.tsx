@@ -1,20 +1,24 @@
 import React from 'react';
 import type { Shift } from '../types';
 import clsx from 'clsx';
+import { generateGradientStyle } from '../utils/colorUtils';
 
 interface ShiftBlockProps {
     shift: Shift | null;
     display: string;
+    customColor?: string;
     onClick: (e: React.MouseEvent) => void;
 }
 
-export const ShiftBlock: React.FC<ShiftBlockProps> = ({ shift, display, onClick }) => {
+export const ShiftBlock: React.FC<ShiftBlockProps> = ({ shift, display, customColor, onClick }) => {
     if (!shift || display === '/') {
         return <span className="block w-full h-full py-1 text-xs text-gray-400 dark:text-gray-600 font-light">{display}</span>;
     }
 
     // Color coding based on shift type with gradients
     const getShiftStyle = (): string => {
+        if (customColor) return ''; // Handled by inline style
+
         if (shift.type === 'WORK') {
             // Night shift detection (crosses midnight)
             if (shift.startHour !== undefined && shift.endHour !== undefined) {
@@ -45,6 +49,8 @@ export const ShiftBlock: React.FC<ShiftBlockProps> = ({ shift, display, onClick 
         return 'bg-gray-400 text-white';
     };
 
+    const customStyle = customColor ? generateGradientStyle(customColor) : undefined;
+
     return (
         <div
             onClick={(e) => {
@@ -52,10 +58,11 @@ export const ShiftBlock: React.FC<ShiftBlockProps> = ({ shift, display, onClick 
                 onClick(e);
             }}
             className={clsx(
-                'inline-block rounded-md px-2 py-0.5 text-xs font-medium cursor-pointer transition-all duration-200 whitespace-nowrap shadow-sm',
+                'inline-block rounded-full px-3 py-0.5 text-xs font-medium cursor-pointer transition-all duration-200 whitespace-nowrap shadow-sm',
                 'hover:scale-105 hover:shadow-md',
                 getShiftStyle()
             )}
+            style={customStyle}
             title="Kliknij aby edytować"
         >
             {display}

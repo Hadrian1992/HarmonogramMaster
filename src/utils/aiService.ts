@@ -1,4 +1,5 @@
 import type { Schedule, Employee } from '../types';
+import type { Message } from '../store/useChatStore';
 import { analyzeSchedule } from './analytics';
 
 export interface AIResponse {
@@ -22,11 +23,12 @@ export async function askAI(
     schedule: Schedule,
     apiKey?: string,
     model?: string,
-    staffingRules?: StaffingRules
+    staffingRules?: StaffingRules,
+    conversationHistory?: Message[]
 ): Promise<AIResponse> {
     // Jeśli podano klucz API, użyj OpenRouter
     if (apiKey) {
-        return callOpenRouter(question, schedule, apiKey, model, staffingRules);
+        return callOpenRouter(question, schedule, apiKey, model, staffingRules, conversationHistory);
     }
 
     // Simulate network delay for local logic
@@ -101,9 +103,25 @@ export async function askAI(
         };
     }
 
+    // === KEYWORD DEFINITIONS ===
+    const planningKeywords = [
+        'zaproponuj', 'zaplanuj', 'ułóż', 'układanie', 'plan',
+        'harmonogram', 'grafik', 'rozpisz', 'ustal', 'stwórz',
+        'generuj', 'zrób grafik', 'kolejny tydzień', 'przyszły tydzień',
+        'kto kiedy', 'obsada', 'grafiku'
+    ];
+
+    const replacementKeywords = [
+        'zastępstw', 'zamiennik', 'kto może', 'replacement',
+        'szukam kogoś', 'potrzebuję kogoś', 'nie ma kogoś',
+        'wolne', 'kto za', 'czy ktoś może', 'zamiana',
+        'dziura', 'brak', 'nie może', 'wypadł', 'chory',
+        'urlop', 'zmiennik'
+    ];
+
     // === SCHEDULE PLANNING CHECK ===
     // Check if user is asking to plan upcoming days/weeks
-    if (q.includes('zaproponuj') || q.includes('zaplanuj') || q.includes('ułóż') || q.includes('układanie') || q.includes('plan')) {
+    if (planningKeywords.some(keyword => q.includes(keyword))) {
         // Try to use the specialized schedule helper
         const { parseSchedulePlanningQuery, askScheduleHelper } = await import('./scheduleHelper');
         const planningRequest = parseSchedulePlanningQuery(question, schedule);
@@ -126,7 +144,7 @@ export async function askAI(
 
     // === REPLACEMENT ADVISOR CHECK ===
     // Check if user is asking for replacement
-    if (q.includes('zastępstw') || q.includes('zamiennik') || q.includes('kto może') || q.includes('replacement')) {
+    if (replacementKeywords.some(keyword => q.includes(keyword))) {
         // Try to use the specialized replacement advisor
         const { parseReplacementQuery, askReplacementAdvisor } = await import('./replacementAdvisor');
         const replacementRequest = parseReplacementQuery(question, schedule);
@@ -153,7 +171,8 @@ export async function askAI(
         schedule,
         apiKey || '',
         model,
-        staffingRules
+        staffingRules,
+        conversationHistory
     );
 }
 
@@ -174,7 +193,8 @@ async function callOpenRouter(
     schedule: Schedule,
     _apiKey: string, // Kept for signature compatibility, but ignored or used as fallback if needed (though backend handles it)
     model: string = 'google/gemini-3-pro-preview',
-    staffingRules?: StaffingRules
+    staffingRules?: StaffingRules,
+    conversationHistory?: Message[]
 ): Promise<AIResponse> {
     const context = generateScheduleContext(schedule);
     const advisorContext = generateAdvisorContext(schedule, staffingRules);
@@ -237,6 +257,23 @@ ZASADY ODPOWIEDZI
         // Use backend proxy with GDPR Anonymization support
         const employeeNames = schedule.employees.map(e => e.name);
 
+        // Build conversation history for API (last 10 messages to save tokens)
+        const messagesForAPI: { role: 'user' | 'assistant', content: string }[] = [];
+        if (conversationHistory && conversationHistory.length > 1) {
+            // Skip the welcome message and take last 10 messages
+            const recentMessages = conversationHistory
+                .filter(msg => msg.id !== 'welcome')
+                .slice(-10);
+
+            recentMessages.forEach(msg => {
+                if (msg.sender === 'user') {
+                    messagesForAPI.push({ role: 'user', content: msg.text });
+                } else if (msg.sender === 'ai') {
+                    messagesForAPI.push({ role: 'assistant', content: msg.text });
+                }
+            });
+        }
+
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/chat`, {
             method: 'POST',
             headers: {
@@ -247,7 +284,9 @@ ZASADY ODPOWIEDZI
                 model: model,
                 systemPrompt: systemPrompt,
                 userMessage: question,
-                employeeNames: employeeNames
+                employeeNames: employeeNames,
+                conversationHistory: messagesForAPI,
+                anonymize: false  // ← DODAJ ten parametr usuń przy audycie
             })
         });
 

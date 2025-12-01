@@ -186,7 +186,7 @@ function deanonymize(text, map) {
 }
 
 app.post('/api/ai/chat', authenticateCookie, async (req, res) => {
-    const { systemPrompt, userMessage, employeeNames, model, messages: legacyMessages } = req.body;
+    const { systemPrompt, userMessage, employeeNames, model, conversationHistory, anonymize = true, messages: legacyMessages } = req.body;
 
     if (!OPENROUTER_API_KEY) {
         return res.status(500).json({ error: 'Server missing API Key' });
@@ -196,46 +196,76 @@ app.post('/api/ai/chat', authenticateCookie, async (req, res) => {
         let finalMessages = [];
         let map = {};
 
-        // Handle new format (with anonymization)
+        // Handle new format (with optional anonymization)
         if (systemPrompt && userMessage && employeeNames) {
-            console.log('Processing with GDPR Anonymization...');
-
-            // 1. Anonymize System Prompt
-            const { anonymizedText: anonSystem, map: systemMap } = anonymize(systemPrompt, employeeNames);
-            map = { ...systemMap };
-
-            // 2. Anonymize User Message
-            // We reuse the map from system prompt to ensure consistency (Pracownik_A is always the same person)
-            // But we need to apply the replacements using the EXISTING map
-            let anonUser = userMessage;
-            const sortedNames = [...employeeNames].sort((a, b) => b.length - a.length);
-            sortedNames.forEach((name, index) => {
-                const alias = `Pracownik_${String.fromCharCode(65 + (index % 26))}${Math.floor(index / 26) || ''}`;
-                const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escapedName, 'g');
-                anonUser = anonUser.replace(regex, alias);
-            });
-
-            // 3. Inject Night Shift Logic
+            // Night Shift Rules (always added to system prompt)
             const nightShiftRules = `
-WAŻNE: Obsługa nocnych zmian
-Jeśli godzina końca < godzina startu (np. start: 20:00, koniec: 08:00), oznacza to przeskok przez północ.
-Oblicz godziny jako: (24 - start) + koniec.
-Przykład: 20:00 → 08:00 = (24 - 20) + 8 = 12 godzin.
-`;
-            const finalSystemPrompt = anonSystem + nightShiftRules;
-
-            finalMessages = [
-                { role: 'system', content: finalSystemPrompt },
-                { role: 'user', content: anonUser }
-            ];
-
-            // Log for verification (don't log real names in production, but for this task verification)
-            console.log('--- GDPR CHECK ---');
-            console.log('Sending to AI (Snippet):', finalSystemPrompt.substring(0, 200) + '...');
-            console.log('User Message:', anonUser);
-            console.log('------------------');
-
+        WAŻNE: Obsługa nocnych zmian
+        Jeśli godzina końca < godzina startu (np. start: 20:00, koniec: 08:00), oznacza to przeskok przez północ.
+        Oblicz godziny jako: (24 - start) + koniec.
+        Przykład: 20:00 → 08:00 = (24 - 20) + 8 = 12 godzin.
+        `;
+            if (anonymize) {
+                // ===== MODE: GDPR ANONYMIZATION =====
+                console.log('Processing with GDPR Anonymization (anonymize=true)');
+                // 1. Anonymize System Prompt
+                const { anonymizedText: anonSystem, map: systemMap } = anonymize(systemPrompt, employeeNames);
+                map = { ...systemMap };
+                const finalSystemPrompt = anonSystem + nightShiftRules;
+                // 2. Start with system message
+                finalMessages.push({ role: 'system', content: finalSystemPrompt });
+                // 3. Add conversation history (anonymized)
+                if (conversationHistory && conversationHistory.length > 0) {
+                    console.log(`Adding ${conversationHistory.length} messages from conversation history (anonymized)`);
+                    conversationHistory.forEach(msg => {
+                        // Anonymize each message
+                        let anonContent = msg.content;
+                        const sortedNames = [...employeeNames].sort((a, b) => b.length - a.length);
+                        sortedNames.forEach((name, index) => {
+                            const alias = `Pracownik_${String.fromCharCode(65 + (index % 26))}${Math.floor(index / 26) || ''}`;
+                            const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            const regex = new RegExp(escapedName, 'g');
+                            anonContent = anonContent.replace(regex, alias);
+                        });
+                        finalMessages.push({ role: msg.role, content: anonContent });
+                    });
+                }
+                // 4. Add current user message (anonymized)
+                let anonUser = userMessage;
+                const sortedNames = [...employeeNames].sort((a, b) => b.length - a.length);
+                sortedNames.forEach((name, index) => {
+                    const alias = `Pracownik_${String.fromCharCode(65 + (index % 26))}${Math.floor(index / 26) || ''}`;
+                    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escapedName, 'g');
+                    anonUser = anonUser.replace(regex, alias);
+                });
+                finalMessages.push({ role: 'user', content: anonUser });
+                console.log('--- GDPR ANONYMIZATION MODE ---');
+                console.log('System Prompt (snippet):', finalSystemPrompt.substring(0, 200) + '...');
+                console.log('User Message (anonymized):', anonUser);
+                console.log('Total messages:', finalMessages.length);
+                console.log('--------------------------------');
+            } else {
+                // ===== MODE: NO ANONYMIZATION (Privacy by Initials) =====
+                console.log('Processing WITHOUT anonymization (anonymize=false)');
+                const finalSystemPrompt = systemPrompt + nightShiftRules;
+                // 1. Start with system message (NO anonymization)
+                finalMessages.push({ role: 'system', content: finalSystemPrompt });
+                // 2. Add conversation history (NO anonymization)
+                if (conversationHistory && conversationHistory.length > 0) {
+                    console.log(`Adding ${conversationHistory.length} messages from conversation history (plain text)`);
+                    conversationHistory.forEach(msg => {
+                        finalMessages.push({ role: msg.role, content: msg.content });
+                    });
+                }
+                // 3. Add current user message (NO anonymization)
+                finalMessages.push({ role: 'user', content: userMessage });
+                console.log('--- NO ANONYMIZATION MODE ---');
+                console.log('System Prompt (snippet):', finalSystemPrompt.substring(0, 200) + '...');
+                console.log('User Message (plain):', userMessage);
+                console.log('Total messages:', finalMessages.length);
+                console.log('-----------------------------');
+            }
         } else if (legacyMessages) {
             // Fallback for old frontend code (if any)
             finalMessages = legacyMessages;
@@ -315,7 +345,7 @@ app.post('/api/ai/replacement-advisor', authenticateCookie, async (req, res) => 
         }).join('\n');
 
         const candidatesSummary = candidates.slice(0, 10).map((c, idx) => {
-            const status = c.score <= -10000 ? '❌ ILLEGAL' : c.score < 0 ? '⚠️ Suboptimal' : '✅ Good';
+            const status = c.score <= 0 ? '❌ ILLEGAL' : c.score < 50 ? '⚠️ Suboptimal' : '✅ Good';
             return `${idx + 1}. **${c.name}** (Score: ${c.score}) ${status}
    - Monthly hours: ${c.details.monthlyHours}h
    - Reasons: ${c.reasons.join(', ') || 'No issues'}`;

@@ -1,6 +1,8 @@
 import React from 'react';
 import clsx from 'clsx';
 import type { Employee, Shift } from '../../types';
+import { useScheduleStore } from '../../store/useScheduleStore';
+import { generateGradientStyle } from '../../utils/colorUtils';
 
 interface EmployeeTimelineProps {
     employee: Employee;
@@ -13,12 +15,19 @@ interface EmployeeTimelineProps {
  * Properly handles night shifts that cross midnight
  */
 export const EmployeeTimeline: React.FC<EmployeeTimelineProps> = ({ employee, shift }) => {
+    const { colorSettings } = useScheduleStore();
     const start = shift.startHour || 0;
     const end = shift.endHour || 0;
 
     // Get shift color
     const getShiftColor = () => {
+        // 1. Check for custom color setting first
+        if (colorSettings[shift.type]) return undefined;
+
         if (shift.type === 'WORK') {
+            const timeKey = `${start}-${end}`;
+            if (colorSettings[timeKey]) return undefined;
+
             if (start >= 20 || end <= 8) {
                 return 'from-purple-500 to-indigo-600'; // Night shift
             }
@@ -37,6 +46,18 @@ export const EmployeeTimeline: React.FC<EmployeeTimelineProps> = ({ employee, sh
 
     // For night shifts that cross midnight, we need to render two bars
     const isNightShift = start > end;
+    const gradientClass = getShiftColor();
+
+    const getCustomStyle = () => {
+        if (colorSettings[shift.type]) return generateGradientStyle(colorSettings[shift.type]);
+        if (shift.type === 'WORK') {
+            const timeKey = `${start}-${end}`;
+            if (colorSettings[timeKey]) return generateGradientStyle(colorSettings[timeKey]);
+        }
+        return undefined;
+    };
+
+    const customStyle = getCustomStyle();
 
     return (
         <div className="group">
@@ -69,14 +90,16 @@ export const EmployeeTimeline: React.FC<EmployeeTimelineProps> = ({ employee, sh
                             <div
                                 className={clsx(
                                     'absolute top-1 bottom-1 rounded-md shadow-lg',
-                                    'bg-gradient-to-r transition-all duration-300',
+                                    'transition-all duration-300',
                                     'group-hover:shadow-xl group-hover:scale-105',
                                     'flex items-center justify-center',
-                                    getShiftColor()
+                                    !customStyle && 'bg-gradient-to-r',
+                                    !customStyle && gradientClass
                                 )}
                                 style={{
                                     left: `${(start / 24) * 100}%`,
-                                    width: `${((24 - start) / 24) * 100}%`
+                                    width: `${((24 - start) / 24) * 100}%`,
+                                    ...customStyle
                                 }}
                             >
                                 <span className="text-white font-bold text-sm px-2 truncate">
@@ -88,14 +111,16 @@ export const EmployeeTimeline: React.FC<EmployeeTimelineProps> = ({ employee, sh
                             <div
                                 className={clsx(
                                     'absolute top-1 bottom-1 rounded-md shadow-lg',
-                                    'bg-gradient-to-r transition-all duration-300',
+                                    'transition-all duration-300',
                                     'group-hover:shadow-xl group-hover:scale-105',
                                     'flex items-center justify-center',
-                                    getShiftColor()
+                                    !customStyle && 'bg-gradient-to-r',
+                                    !customStyle && gradientClass
                                 )}
                                 style={{
                                     left: '0%',
-                                    width: `${(end / 24) * 100}%`
+                                    width: `${(end / 24) * 100}%`,
+                                    ...customStyle
                                 }}
                             >
                                 <span className="text-white font-bold text-sm px-2 truncate">
@@ -107,14 +132,16 @@ export const EmployeeTimeline: React.FC<EmployeeTimelineProps> = ({ employee, sh
                         <div
                             className={clsx(
                                 'absolute top-1 bottom-1 rounded-md shadow-lg',
-                                'bg-gradient-to-r transition-all duration-300',
+                                'transition-all duration-300',
                                 'group-hover:shadow-xl group-hover:scale-105',
                                 'flex items-center justify-center',
-                                getShiftColor()
+                                !customStyle && 'bg-gradient-to-r',
+                                !customStyle && gradientClass
                             )}
                             style={{
                                 left: `${(start / 24) * 100}%`,
-                                width: `${((end - start) / 24) * 100}%`
+                                width: `${((end - start) / 24) * 100}%`,
+                                ...customStyle
                             }}
                         >
                             <span className="text-white font-bold text-sm px-2 truncate">

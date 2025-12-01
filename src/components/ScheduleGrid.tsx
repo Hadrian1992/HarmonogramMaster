@@ -9,6 +9,7 @@ import { exportToPDF } from '../utils/pdfExport';
 import { exportScheduleData, importScheduleData } from '../utils/dataBackup';
 import { ShiftBlock } from './ShiftBlock';
 import { ReplacementModal } from './ReplacementModal';
+import { ColorModal } from './ColorModal';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { ScheduleGridMobile } from './ScheduleGridMobile';
 import { GlassCard } from './ui/GlassCard';
@@ -24,7 +25,7 @@ export const ScheduleGrid: React.FC = () => {
     const [editingContactHours, setEditingContactHours] = useState<string | null>(null);
     const [contactHoursValue, setContactHoursValue] = useState('0');
     const [showTemplates, setShowTemplates] = useState(false);
-    const [, setShowColorSettings] = useState(false);
+    const [showColorSettings, setShowColorSettings] = useState(false);
     const [newTemplateName, setNewTemplateName] = useState('');
     const [templateSourceDate, setTemplateSourceDate] = useState('');
     const [templateTargetDate, setTemplateTargetDate] = useState('');
@@ -397,6 +398,19 @@ export const ScheduleGrid: React.FC = () => {
     ];
 
 
+    const allTemplates = [
+        ...templates,
+        ...Object.keys(colorSettings)
+            .filter(key => !templates.some(t => t.value === key))
+            .map(key => ({
+                label: key,
+                value: key,
+                color: 'bg-gray-100 hover:bg-gray-200 text-gray-800',
+                darkColor: 'dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200',
+                tooltip: key
+            }))
+    ];
+
     return (
         <div className="p-4 md:p-6 max-w-[100vw] overflow-x-hidden min-h-screen">
             <PageHeader
@@ -637,7 +651,7 @@ export const ScheduleGrid: React.FC = () => {
                 {/* Quick Insert Templates */}
                 <div className="mb-6 p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-x-auto">
                     <div className="flex gap-2 min-w-max">
-                        {templates.map(t => (
+                        {allTemplates.map(t => (
                             <button
                                 key={t.value}
                                 onMouseDown={(e) => {
@@ -650,6 +664,11 @@ export const ScheduleGrid: React.FC = () => {
                                     t.darkColor
                                 )}
                                 title={t.tooltip}
+                                style={{
+                                    backgroundColor: colorSettings[t.value] ? colorSettings[t.value] : undefined,
+                                    color: colorSettings[t.value] ? '#fff' : undefined,
+                                    borderColor: colorSettings[t.value] ? colorSettings[t.value] : undefined
+                                }}
                             >
                                 {t.label}
                             </button>
@@ -817,21 +836,31 @@ export const ScheduleGrid: React.FC = () => {
                                                     }
                                                 }
 
+                                                // Helper to get custom color key
+                                                const getCustomColor = () => {
+                                                    if (!shift) return undefined;
+                                                    if (shift.type === 'WORK') {
+                                                        const timeKey = `${shift.startHour}-${shift.endHour}`;
+                                                        if (colorSettings[timeKey]) return colorSettings[timeKey];
+                                                    }
+                                                    return colorSettings[shift.type];
+                                                };
+
+                                                const customColor = getCustomColor();
+
                                                 return (
                                                     <React.Fragment key={dateStr}>
                                                         <td
                                                             className={clsx(
                                                                 "px-4 py-3 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 relative",
                                                                 isWeekend(day) && "bg-red-50/30 dark:bg-red-900/10",
-                                                                !colorSettings[shift?.type || ''] && shift?.type === 'L4' && "bg-orange-100 dark:bg-orange-900/30",
-                                                                !colorSettings[shift?.type || ''] && shift?.type === 'UW' && "bg-green-100 dark:bg-green-900/30",
-                                                                !colorSettings[shift?.type || ''] && shift?.type === 'K' && "bg-purple-100 dark:bg-purple-900/30",
+                                                                !customColor && shift?.type === 'L4' && "bg-orange-100 dark:bg-orange-900/30",
+                                                                !customColor && shift?.type === 'UW' && "bg-green-100 dark:bg-green-900/30",
+                                                                !customColor && shift?.type === 'K' && "bg-purple-100 dark:bg-purple-900/30",
                                                                 isEditing && "p-0"
                                                             )}
                                                             style={{
-                                                                backgroundColor: shift?.type && colorSettings[shift.type]
-                                                                    ? colorSettings[shift.type]
-                                                                    : undefined
+                                                                // backgroundColor: customColor || undefined // REMOVED: User wants badge style only
                                                             }}
                                                             onClick={() => {
                                                                 if (!isEditing) {
@@ -868,6 +897,7 @@ export const ScheduleGrid: React.FC = () => {
                                                                 <ShiftBlock
                                                                     shift={shift}
                                                                     display={display}
+                                                                    customColor={customColor}
                                                                     onClick={() => {
                                                                         handleCellClick(emp.id, dateStr, display === '/' ? '' : display);
                                                                     }}
@@ -1103,6 +1133,12 @@ export const ScheduleGrid: React.FC = () => {
                 onSelectCandidate={handleSelectReplacement}
                 includeContactHours={includeContactHours}
                 onToggleContactHours={handleToggleContactHours}
+            />
+
+            {/* Color Settings Modal */}
+            <ColorModal
+                isOpen={showColorSettings}
+                onClose={() => setShowColorSettings(false)}
             />
         </div >
     );

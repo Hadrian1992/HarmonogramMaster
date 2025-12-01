@@ -1,11 +1,13 @@
 import { addDays, subDays, format, isWeekend, differenceInHours } from 'date-fns';
 
 const SCORING = {
-    PREFERRED: 100,
+    BASE: 100,
+    PREFERRED: 0, // No bonus, just 100%
     NEUTRAL: 0,
-    AVOID: -50,
-    STRONGLY_AVOID: -200,
-    ILLEGAL: -10000,
+    AVOID: -25, // 75% match
+    STRONGLY_AVOID: -50, // 50% match
+    CRITICAL_ISSUE: -60, // 40% match (e.g. 11h rest violation if we want to show it)
+    ILLEGAL: -10000, // Still filter out completely illegal
 };
 
 const getShiftHours = (type) => {
@@ -96,20 +98,37 @@ const checkForwardConstraints = (employee, dateStr, proposedShiftType) => {
 };
 
 const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, includeContactHours = false) => {
-    let score = 0;
+    let score = SCORING.BASE; // Start with 100%
     const reasons = [];
     const date = new Date(dateStr);
 
     // 0. Hard Constraints Check (Backwards)
     const legal = checkHardConstraints(employee, dateStr, proposedShiftType);
     if (!legal.valid) {
-        return { score: SCORING.ILLEGAL, reasons: [legal.reason] };
+        // User requested "40% złamana zasada odpoczynku"
+        // If it's an 11h rest violation, we give it a low score but maybe not -10000 if user wants to see it?
+        // But usually "Illegal" means "Cannot work".
+        // Let's stick to standard logic: Illegal is Illegal.
+        // UNLESS user specifically wants to see them. 
+        // User said: "40% złamana zasada odpoczynku".
+        // So let's try to map "11h rest violation" to 40% score (so -60 penalty).
+        if (legal.reason.includes('11h')) {
+            score += SCORING.CRITICAL_ISSUE;
+            reasons.push(legal.reason);
+        } else {
+            return { score: SCORING.ILLEGAL, reasons: [legal.reason] };
+        }
     }
 
     // 0.1. Hard Constraints Check (Forward - Today -> Tomorrow)
     const legalForward = checkForwardConstraints(employee, dateStr, proposedShiftType);
     if (!legalForward.valid) {
-        return { score: SCORING.ILLEGAL, reasons: [legalForward.reason] };
+        if (legalForward.reason.includes('11h')) {
+            score += SCORING.CRITICAL_ISSUE;
+            reasons.push(legalForward.reason);
+        } else {
+            return { score: SCORING.ILLEGAL, reasons: [legalForward.reason] };
+        }
     }
 
     // 0.5. Specjalne ograniczenia dla lidera (Maria Pankowska)
@@ -149,7 +168,7 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, incl
     // 1. Night Shift Recovery (2 Nights -> 2 Days Off)
     if (prevShift && isNightShift(prevShift.type) && prevPrevShift && isNightShift(prevPrevShift.type)) {
         if (proposedShiftType !== 'W') {
-            score += SCORING.STRONGLY_AVOID;
+            score += SCORING.STRONGLY_AVOID; // -50 (Result: 50%)
             reasons.push('Po 2 nockach zalecane 2 dni wolnego');
         } else {
             score += SCORING.PREFERRED;
@@ -160,7 +179,7 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, incl
     // 2. Rotation Logic (Avoid Night -> Morning)
     if (prevShift && isNightShift(prevShift.type)) {
         if (proposedShiftType !== 'W') {
-            score += SCORING.AVOID;
+            score += SCORING.AVOID; // -25 (Result: 75%)
             reasons.push('Po nocce zalecany dzień wolny');
         }
     }
@@ -188,10 +207,10 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, incl
             } else {
                 // Większa kara za cały weekend niż za jeden dzień
                 if (workedLastSat && workedLastSun) {
-                    score += SCORING.AVOID * 1.5; // -75 zamiast -50
+                    score += SCORING.STRONGLY_AVOID; // -50 (Result: 50%)
                     reasons.push('Pracował cały zeszły weekend');
                 } else {
-                    score += SCORING.AVOID * 0.5; // -25 zamiast -50
+                    score += SCORING.AVOID; // -25 (Result: 75%)
                     reasons.push('Pracował w zeszły weekend (1 dzień)');
                 }
             }
@@ -229,12 +248,16 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, incl
     const avgHours = totalHours / allEmployees.length;
 
     if (proposedShiftType !== 'W') {
-        if (myHours < avgHours - 10) {
-            score += 50;
-            reasons.push('Ma mało godzin (wyrównywanie)');
-        } else if (myHours > avgHours + 10) {
-            score += SCORING.AVOID;
-            reasons.push('Ma dużo godzin (wyrównywanie)');
+        const deviation = avgHours > 0 ? myHours - avgHours : 0;
+
+        // Granular scoring: +/- 1 point per hour deviation
+        // Cap at +/- 20 points
+        const hoursScore = Math.max(-20, Math.min(20, Math.round(-deviation)));
+
+        if (hoursScore !== 0) {
+            score += hoursScore;
+            if (hoursScore > 5) reasons.push(`Ma mniej godzin (${Math.round(deviation)}h poniżej średniej)`);
+            if (hoursScore < -5) reasons.push(`Ma więcej godzin (+${Math.round(deviation)}h powyżej średniej)`);
         }
     }
 
@@ -249,9 +272,13 @@ const calculateScore = (employee, dateStr, proposedShiftType, allEmployees, incl
         }
     }
     if (consecutive >= 5 && proposedShiftType !== 'W') {
-        score += SCORING.STRONGLY_AVOID;
+        score += SCORING.STRONGLY_AVOID; // -50
         reasons.push(`Pracuje już ${consecutive} dni z rzędu`);
     }
+
+    // Cap score at 100 max and 0 min (unless illegal)
+    if (score > 100) score = 100;
+    if (score < 0 && score > -1000) score = 0;
 
     return { score, reasons };
 };

@@ -128,11 +128,11 @@ export const ReplacementModal: React.FC<ReplacementModalProps> = ({
                                             </div>
                                             <div className="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-4">
                                                 <span>Godziny w tym miesiącu: <strong className="text-gray-700 dark:text-gray-300">{candidate.details.monthlyHours}h</strong></span>
-                                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${candidate.score > 50 ? 'bg-green-100 text-green-800' :
-                                                    candidate.score > 0 ? 'bg-yellow-100 text-yellow-800' :
+                                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${candidate.score >= 80 ? 'bg-green-100 text-green-800' :
+                                                    candidate.score >= 50 ? 'bg-yellow-100 text-yellow-800' :
                                                         'bg-red-100 text-red-800'
                                                     }`}>
-                                                    Wynik: {candidate.score} pkt
+                                                    Dopasowanie: {candidate.score}%
                                                 </span>
                                             </div>
                                         </div>
