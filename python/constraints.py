@@ -94,7 +94,7 @@ def add_11h_rest_constraint(model: cp_model.CpModel, shifts: Dict, input_data: S
                     # Jeśli przerwa jest za krótka, zablokuj tę zmianę w pierwszym dniu.
                     # Nie możemy zmienić przeszłości, ale możemy zabronić przyszłości.
                     first_day_var = shifts[emp.id][first_date].get(shift_on_first_day.id)
-                    if first_day_var:
+                    if first_day_var is not None:
                         print(f"DEBUG: Blocking {shift_on_first_day.id} for {emp.name} on {first_date} due to history.", file=sys.stderr)
                         model.Add(first_day_var == 0) # Twardy zakaz tej zmiany
         # --- KONIEC NOWEGO BLOKU ---
