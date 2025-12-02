@@ -7,6 +7,7 @@ from models import SolverInput, Employee, ShiftType, Constraint
 from typing import Dict, List
 from datetime import datetime, timedelta
 import calendar
+import sys
 
 def add_all_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput, history_shifts: Dict[str, ShiftType]):
     """
