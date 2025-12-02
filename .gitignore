@@ -26,3 +26,9 @@ dist-ssr
 # Database and Env
 data/db.json
 .env
+
+# Python
+python/venv
+venv/
+python/__pycache__
+*.pyc

@@ -608,6 +608,147 @@ PRZYKŁAD:
     }
 });
 
+// OR-Tools Schedule Generator - Advanced constraint-based scheduling
+app.post('/api/ortools/generate-schedule', authenticateCookie, async (req, res) => {
+    const {
+        dateRange,      // { start: "2026-01-08", end: "2026-01-14" }
+        employees,      // [{ id, name, allowedShifts, preferences }]
+        constraints,    // [{ type, employeeId, date, value }]
+        demand,         // { "2026-01-08": 3, "2026-01-09": 2, ... }
+        existingSchedule // Current schedule from DB
+    } = req.body;
+
+    console.log('OR-Tools request received:', {
+        dateRange,
+        numEmployees: employees?.length,
+        numConstraints: constraints?.length
+    });
+
+    try {
+        // 1. Merge existing absences (L4, UW, etc.) into constraints
+        const allConstraints = mergeAbsences(existingSchedule, constraints || [], dateRange);
+        console.log(`Total constraints (including absences): ${allConstraints.length}`);
+
+        // 2. Prepare input for Python solver
+        const solverInput = {
+            employees: employees || [],
+            constraints: allConstraints,
+            dateRange,
+            demand: demand || {},
+            existingSchedule: existingSchedule || {}
+        };
+
+        // 3. Spawn Python process
+        const { spawn } = await import('child_process');
+
+        // Determine Python path (Windows vs Linux)
+        const isWindows = process.platform === 'win32';
+        const pythonPath = process.env.PYTHON_PATH || path.join(
+            __dirname,
+            'python',
+            'venv',
+            isWindows ? 'Scripts' : 'bin',
+            isWindows ? 'python.exe' : 'python3'
+        );
+        const scriptPath = path.join(__dirname, 'python', 'scheduler_solver.py');
+
+        console.log(`Spawning Python: ${pythonPath} ${scriptPath}`);
+
+        const python = spawn(pythonPath, [scriptPath], {
+            cwd: path.join(__dirname, 'python')
+        });
+
+        let output = '';
+        let errorOutput = '';
+
+        python.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+
+        python.stderr.on('data', (data) => {
+            const msg = data.toString();
+            errorOutput += msg;
+            console.log('[Python stderr]:', msg.trim());
+        });
+
+        // Send input to Python via stdin
+        python.stdin.write(JSON.stringify(solverInput));
+        python.stdin.end();
+
+        python.on('close', (code) => {
+            if (code !== 0) {
+                console.error('Python solver failed with code:', code);
+                console.error('Error output:', errorOutput);
+                return res.status(500).json({
+                    error: 'Solver failed',
+                    details: errorOutput,
+                    code
+                });
+            }
+
+            try {
+                const result = JSON.parse(output);
+                console.log('Solver result:', result.status);
+                res.json(result);
+            } catch (err) {
+                console.error('Failed to parse Python output:', err);
+                console.error('Raw output:', output);
+                res.status(500).json({
+                    error: 'Invalid JSON from solver',
+                    details: output.substring(0, 500)
+                });
+            }
+        });
+
+        // Timeout after 2 minutes
+        setTimeout(() => {
+            python.kill();
+            res.status(408).json({ error: 'Solver timeout (2 minutes)' });
+        }, 120000);
+
+    } catch (error) {
+        console.error('OR-Tools error:', error);
+        res.status(500).json({ error: 'Failed to generate schedule', details: error.message });
+    }
+});
+
+/**
+ * Merge absences from existing schedule into constraints
+ */
+function mergeAbsences(existingSchedule, userConstraints, dateRange) {
+    const absences = [];
+    const { start, end } = dateRange;
+
+    if (!existingSchedule || !existingSchedule.employees) {
+        return userConstraints;
+    }
+
+    // Extract L4, UW, etc. from existing schedule
+    for (const emp of existingSchedule.employees) {
+        if (!emp.shifts) continue;
+
+        for (const [date, shift] of Object.entries(emp.shifts)) {
+            if (date >= start && date <= end) {
+                // Check if it's an absence type
+                const absenceTypes = ['L4', 'UW', 'UZ', 'UŻ', 'OP', 'UM', 'USW', 'UB', 'WYCH', 'NN'];
+                if (absenceTypes.includes(shift.type)) {
+                    absences.push({
+                        type: 'ABSENCE',
+                        employeeId: emp.id,
+                        date,
+                        description: `${shift.type} (z głównego grafiku)`,
+                        isHard: true
+                    });
+                }
+            }
+        }
+    }
+
+    console.log(`Found ${absences.length} absences from existing schedule`);
+    return [...absences, ...userConstraints];
+}
+
+
 // 3. DATA ROUTES (Protected)
 app.get('/api/data', authenticateCookie, (req, res) => {
     try {

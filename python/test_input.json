@@ -1,0 +1,50 @@
+{
+    "employees": [
+        {
+            "id": "1",
+            "name": "Patrycja Górtowska",
+            "allowedShifts": [
+                "8-16",
+                "14-22",
+                "20-8"
+            ],
+            "preferences": {},
+            "specialRules": {}
+        },
+        {
+            "id": "2",
+            "name": "Maria Pankowska",
+            "allowedShifts": [
+                "8-16",
+                "8-20"
+            ],
+            "preferences": {},
+            "specialRules": {
+                "isLeader": true
+            }
+        }
+    ],
+    "constraints": [
+        {
+            "type": "ABSENCE",
+            "employeeId": "1",
+            "date": "2026-01-10",
+            "description": "Urlop Pauliny",
+            "isHard": true
+        }
+    ],
+    "dateRange": {
+        "start": "2026-01-08",
+        "end": "2026-01-14"
+    },
+    "demand": {
+        "2026-01-08": 2,
+        "2026-01-09": 2,
+        "2026-01-10": 1,
+        "2026-01-11": 2,
+        "2026-01-12": 2,
+        "2026-01-13": 1,
+        "2026-01-14": 1
+    },
+    "existingSchedule": {}
+}

@@ -18,6 +18,7 @@ import { EmployeeView } from './components/EmployeeView';
 import { MonthComparison } from './components/MonthComparison';
 import { ConfigView } from './components/ConfigView';
 import { AIAssistant } from './components/AIAssistant';
+import ORToolsSchedulerPage from './components/ORToolsScheduler/ORToolsSchedulerPage';
 // import { exportToExcel } from './utils/excelExport'; // Removed as per user request
 import { analyzeSchedule } from './utils/analytics';
 import { getHolidays } from './utils/holidays';
@@ -38,7 +39,7 @@ function MainLayout() {
   }, [isDark]);
 
   const [isEmployeeManagerOpen, setIsEmployeeManagerOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'schedule' | 'dashboard' | 'timeline' | 'coverage' | 'monthly' | 'employee' | 'comparison' | 'config'>('schedule');
+  const [currentView, setCurrentView] = useState<'schedule' | 'dashboard' | 'timeline' | 'coverage' | 'monthly' | 'employee' | 'comparison' | 'config' | 'ortools'>('schedule');
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [showLoadConfirmation, setShowLoadConfirmation] = useState(false);
 
@@ -473,6 +474,18 @@ function MainLayout() {
               <Settings size={16} />
               Konfiguracja
             </button>
+            <button
+              onClick={() => setCurrentView('ortools')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'ortools'
+                  ? "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-200 dark:ring-purple-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M2 12h20M6 6l12 12M6 18L18 6" /></svg>
+              Grafik AI
+            </button>
           </div>
         </div>
       </header>
@@ -588,8 +601,10 @@ function MainLayout() {
           <EmployeeView />
         ) : currentView === 'comparison' ? (
           <MonthComparison />
-        ) : (
+        ) : currentView === 'config' ? (
           <ConfigView />
+        ) : (
+          <ORToolsSchedulerPage />
         )}
       </main>
       <footer className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-lg border-t border-white/20 dark:border-slate-800 py-4 px-6 text-center text-xs text-slate-500 dark:text-slate-400">

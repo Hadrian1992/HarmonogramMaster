@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""
+OR-Tools Schedule Solver
+Main solver for generating optimal work schedules
+"""
+import sys
+import json
+from ortools.sat.python import cp_model
+from models import SolverInput, SolverOutput, Employee, ShiftType, Constraint
+from constraints import add_all_constraints
+from datetime import datetime, timedelta
+from typing import Dict, List
+
+def parse_input(input_json: dict) -> SolverInput:
+    """Parse JSON input into SolverInput object"""
+    # Parse employees
+    employees = []
+    for emp_data in input_json.get('employees', []):
+        # Parse allowed shifts
+        allowed_shifts = []
+        for shift_str in emp_data.get('allowedShifts', []):
+            try:
+                shift = ShiftType.from_string(shift_str)
+                allowed_shifts.append(shift)
+            except ValueError as e:
+                print(f"Warning: Invalid shift format '{shift_str}': {e}", file=sys.stderr)
+        
+        employee = Employee(
+            id=emp_data['id'],
+            name=emp_data['name'],
+            allowed_shifts=allowed_shifts,
+            preferences=emp_data.get('preferences', {}),
+            special_rules=emp_data.get('specialRules', {})
+        )
+        employees.append(employee)
+    
+    # Parse constraints
+    constraints = []
+    for const_data in input_json.get('constraints', []):
+        constraint = Constraint(
+            type=const_data['type'],
+            employee_id=const_data.get('employeeId'),
+            date=const_data.get('date'),
+            date_range=tuple(const_data['dateRange']) if const_data.get('dateRange') else None,
+            value=const_data.get('value'),
+            description=const_data.get('description', ''),
+            is_hard=const_data.get('isHard', True)
+        )
+        constraints.append(constraint)
+    
+    # Parse date range
+    date_range = (
+        input_json['dateRange']['start'],
+        input_json['dateRange']['end']
+    )
+    
+    # Parse demand
+    demand = input_json.get('demand', {})
+    
+    # Parse existing schedule
+    existing_schedule = input_json.get('existingSchedule', {})
+    
+    return SolverInput(
+        employees=employees,
+        constraints=constraints,
+        date_range=date_range,
+        demand=demand,
+        existing_schedule=existing_schedule
+    )
+
+def create_shift_variables(model: cp_model.CpModel, input_data: SolverInput) -> Dict:
+    """
+    Create decision variables for the model
+    shifts[employee_id][date][shift_type_id] = BoolVar
+    """
+    shifts = {}
+    
+    for emp in input_data.employees:
+        shifts[emp.id] = {}
+        for date_str in input_data.get_date_list():
+            shifts[emp.id][date_str] = {}
+            for shift_type in emp.allowed_shifts:
+                var_name = f"{emp.id}_{date_str}_{shift_type.id}"
+                shifts[emp.id][date_str][shift_type.id] = model.NewBoolVar(var_name)
+    
+    return shifts
+
+def extract_schedule(solver: cp_model.CpSolver, shifts: Dict, employees: List[Employee]) -> Dict[str, Dict[str, str]]:
+    """Extract the solution from the solver"""
+    schedule = {}
+    
+    for emp in employees:
+        schedule[emp.id] = {}
+        if emp.id not in shifts:
+            continue
+        
+        for date_str, date_shifts in shifts[emp.id].items():
+            for shift_type_id, shift_var in date_shifts.items():
+                if solver.Value(shift_var) == 1:
+                    schedule[emp.id][date_str] = shift_type_id
+                    break  # Only one shift per day
+    
+    return schedule
+
+def solve_schedule(input_data: SolverInput) -> SolverOutput:
+    """
+    Main solver function
+    """
+    print(f"Solving schedule for {len(input_data.employees)} employees", file=sys.stderr)
+    print(f"Date range: {input_data.date_range[0]} to {input_data.date_range[1]}", file=sys.stderr)
+    
+    # Create model
+    model = cp_model.CpModel()
+    
+    # Create variables
+    print("Creating variables...", file=sys.stderr)
+    shifts = create_shift_variables(model, input_data)
+    
+    # --- ZMIANA: POBIERANIE HISTORII ---
+    # Próbujemy pobrać historię zmian z poprzedniego dnia
+    try:
+        history_shifts = input_data.get_history_shifts()
+        print(f"Loaded history for {len(history_shifts)} employees", file=sys.stderr)
+    except Exception as e:
+        print(f"Warning: Failed to load history shifts: {e}", file=sys.stderr)
+        history_shifts = {}
+    # -----------------------------------
+
+    # Add constraints
+    print("Adding constraints...", file=sys.stderr)
+    # --- ZMIANA: PRZEKAZANIE HISTORII ---
+    # Zakładamy, że add_all_constraints w constraints.py przyjmuje teraz dodatkowy argument
+    # Jeśli funkcja add_all_constraints nie obsługuje jeszcze tego argumentu, 
+    # będziesz musiał zaktualizować również plik constraints.py
+    add_all_constraints(model, shifts, input_data, history_shifts)
+    # ------------------------------------
+    
+    # Solve
+    print("Solving...", file=sys.stderr)
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 60.0  # 1 minute timeout
+    solver.parameters.log_search_progress = True
+    
+    status = solver.Solve(model)
+    
+    # Extract solution
+    if status == cp_model.OPTIMAL:
+        print("✓ Optimal solution found!", file=sys.stderr)
+        schedule = extract_schedule(solver, shifts, input_data.employees)
+        return SolverOutput(
+            status="SUCCESS",
+            schedule=schedule,
+            stats={
+                "solve_time": solver.WallTime(),
+                "status": "OPTIMAL",
+                "objective_value": solver.ObjectiveValue() if solver.ObjectiveValue() else 0,
+                "num_conflicts": solver.NumConflicts(),
+                "num_branches": solver.NumBranches()
+            }
+        )
+    elif status == cp_model.FEASIBLE:
+        print("✓ Feasible solution found (not optimal)", file=sys.stderr)
+        schedule = extract_schedule(solver, shifts, input_data.employees)
+        return SolverOutput(
+            status="SUCCESS",
+            schedule=schedule,
+            stats={
+                "solve_time": solver.WallTime(),
+                "status": "FEASIBLE",
+                "objective_value": solver.ObjectiveValue() if solver.ObjectiveValue() else 0,
+                "num_conflicts": solver.NumConflicts(),
+                "num_branches": solver.NumBranches()
+            },
+            violations=["Solution is feasible but not optimal"]
+        )
+    elif status == cp_model.INFEASIBLE:
+        print("✗ No solution found (INFEASIBLE)", file=sys.stderr)
+        return SolverOutput(
+            status="FAILED",
+            error="No feasible solution exists. Constraints are too restrictive.",
+            stats={
+                "solve_time": solver.WallTime(),
+                "status": "INFEASIBLE"
+            }
+        )
+    else:
+        print(f"✗ Solver failed with status: {solver.StatusName(status)}", file=sys.stderr)
+        return SolverOutput(
+            status="FAILED",
+            error=f"Solver failed: {solver.StatusName(status)}",
+            stats={
+                "solve_time": solver.WallTime(),
+                "status": solver.StatusName(status)
+            }
+        )
+
+def main():
+    """Main entry point"""
+    try:
+        # Read JSON from stdin
+        print("Reading input from stdin...", file=sys.stderr)
+        input_json = json.load(sys.stdin)
+        
+        # Parse input
+        print("Parsing input...", file=sys.stderr)
+        input_data = parse_input(input_json)
+        
+        # Solve
+        result = solve_schedule(input_data)
+        
+        # Convert to dict for JSON serialization
+        output = {
+            "status": result.status,
+            "schedule": result.schedule,
+            "stats": result.stats,
+            "violations": result.violations,
+            "error": result.error
+        }
+        
+        # Output JSON to stdout
+        print(json.dumps(output, indent=2))
+        
+    except Exception as e:
+        print(f"ERROR: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        
+        # Output error as JSON
+        error_output = {
+            "status": "FAILED",
+            "error": str(e),
+            "schedule": {},
+            "stats": {},
+            "violations": []
+        }
+        print(json.dumps(error_output, indent=2))
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

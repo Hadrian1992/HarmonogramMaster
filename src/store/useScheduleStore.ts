@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { startOfWeek, addDays, format } from 'date-fns';
 import type { Schedule, Shift, ShiftType } from '../types';
 import { generateSchedule, DEFAULT_DEMAND } from '../utils/scheduler';
+import type { ORToolsEmployee, ORToolsConstraint } from '../utils/ortoolsService';
+
 
 interface CopiedDay {
     date: string;
@@ -50,7 +52,18 @@ interface ScheduleState {
         customRules?: string;
     };
     updateStaffingRules: (rules: { minStaffMorning: number; minStaffEvening: number; minStaffNight: number; customRules?: string }) => void;
+
+    ortoolsConfig: {
+        employees: ORToolsEmployee[];
+        constraints: ORToolsConstraint[];
+        demand: Record<string, number>;
+        dateRange: { start: string; end: string };
+    };
+    updateORToolsConfig: (config: Partial<ScheduleState['ortoolsConfig']>) => void;
 }
+
+
+
 
 const INITIAL_SCHEDULE: Schedule = {
     id: 'default',
@@ -78,7 +91,13 @@ export const useScheduleStore = create<ScheduleState>()(
                 minStaffMorning: 2,
                 minStaffEvening: 1,
                 minStaffNight: 1,
-                customRules: ''
+                customRules: '',
+            },
+            ortoolsConfig: {
+                employees: [],
+                constraints: [],
+                demand: {},
+                dateRange: { start: '', end: '' }
             },
 
             setMonth: (month, year) => set((state) => ({
@@ -404,7 +423,15 @@ export const useScheduleStore = create<ScheduleState>()(
                         emp.id === employeeId ? { ...emp, preferences } : emp
                     )
                 }
-            }))
+            })), // <-- Tu zamykamy updateEmployeePreferences i dajemy przecinek
+
+            // Teraz nowa funkcja jako kolejne pole obiektu głównego store'a
+            updateORToolsConfig: (newConfig) => set((state) => ({
+                ortoolsConfig: {
+                    ...state.ortoolsConfig,
+                    ...newConfig
+                }
+            })) // <-- Tu koniec updateORToolsConfig (ostatnia funkcja, więc przecinek opcjonalny, ale dobra praktyka)
         }),
         {
             name: 'harmonogram-storage',
