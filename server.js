@@ -687,22 +687,36 @@ app.post('/api/ortools/generate-schedule', authenticateCookie, async (req, res) 
             }
 
             try {
-                // --- POPRAWKA START: Wyciąganie JSONa z logów ---
-                const jsonStartIndex = output.indexOf('{');
+                // Szukamy ostatniej klamry zamykającej
                 const jsonEndIndex = output.lastIndexOf('}');
 
-                if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
-                    // Wycinamy tekst od pierwszej '{' do ostatniej '}'
-                    const jsonString = output.substring(jsonStartIndex, jsonEndIndex + 1);
+                if (jsonEndIndex !== -1) {
+                    // Szukamy klamry otwierającej JSON (zakładamy, że wynik to {"status":...})
+                    // Szukamy frazy "status" aby namierzyć właściwy początek
+                    const statusIndex = output.indexOf('"status"');
 
-                    const result = JSON.parse(jsonString);
-                    console.log('Solver result status:', result.status);
-                    res.json(result);
+                    // Cofamy się od "status" do najbliższej klamry {
+                    let jsonStartIndex = -1;
+                    if (statusIndex !== -1) {
+                        jsonStartIndex = output.lastIndexOf('{', statusIndex);
+                    }
+
+                    // Zabezpieczenie: jeśli nie znaleziono przez "status", bierzemy pierwszą klamrę (jak dawniej)
+                    if (jsonStartIndex === -1) {
+                        jsonStartIndex = output.indexOf('{');
+                    }
+
+                    if (jsonStartIndex !== -1) {
+                        const jsonString = output.substring(jsonStartIndex, jsonEndIndex + 1);
+                        const result = JSON.parse(jsonString);
+                        console.log('Solver result status:', result.status);
+                        res.json(result);
+                    } else {
+                        throw new Error('No JSON start found');
+                    }
                 } else {
-                    throw new Error('No JSON object found in Python output');
+                    throw new Error('No JSON end found');
                 }
-                // --- POPRAWKA KONIEC ---
-
             } catch (err) {
                 console.error('Failed to parse Python output:', err);
                 console.error('Raw output (first 500 chars):', output.substring(0, 500));

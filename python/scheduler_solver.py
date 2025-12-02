@@ -139,7 +139,7 @@ def solve_schedule(input_data: SolverInput) -> SolverOutput:
     print("Solving...", file=sys.stderr)
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 60.0  # 1 minute timeout
-    solver.parameters.log_search_progress = True
+    solver.parameters.log_search_progress = False
     
     status = solver.Solve(model)
     
