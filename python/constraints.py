@@ -273,7 +273,7 @@ def add_maria_rules(model: cp_model.CpModel, shifts: Dict, input_data: SolverInp
         
         for shift_type in maria.allowed_shifts:
             shift_var = shifts[maria.id][date_str].get(shift_type.id)
-            if not shift_var:
+            if shift_var is None:
                 continue
             
             # NO weekends
