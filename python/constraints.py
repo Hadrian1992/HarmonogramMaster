@@ -115,7 +115,7 @@ def add_11h_rest_constraint(model: cp_model.CpModel, shifts: Dict, input_data: S
                         today_var = shifts[emp.id][today].get(shift_today.id)
                         tomorrow_var = shifts[emp.id][tomorrow].get(shift_tomorrow.id)
                         
-                        if today_var and tomorrow_var:
+                        if today_var is not None and tomorrow_var is not None:
                             model.AddImplication(today_var, tomorrow_var.Not())
 
 def calculate_rest_gap(shift1: ShiftType, shift2: ShiftType) -> int:
@@ -181,7 +181,7 @@ def add_40h_weekly_limit(model: cp_model.CpModel, shifts: Dict, input_data: Solv
                 if date_str in shifts[emp.id]:
                     for shift_type in emp.allowed_shifts:
                         shift_var = shifts[emp.id][date_str].get(shift_type.id)
-                        if shift_var:
+                        if shift_var is not None:
                             # If this shift is worked, add its hours
                             weekly_hours.append(shift_var * shift_type.hours)
             
@@ -400,7 +400,7 @@ def add_hour_balancing_objective(model: cp_model.CpModel, shifts: Dict, input_da
             if date_str in shifts[emp.id]:
                 for shift_type in emp.allowed_shifts:
                     shift_var = shifts[emp.id][date_str].get(shift_type.id)
-                    if shift_var:
+                    if shift_var is not None:
                         total_hours.append(shift_var * shift_type.hours)
         
         if total_hours:
@@ -507,7 +507,7 @@ def add_min_one_night_shift_per_day(model: cp_model.CpModel, shifts: Dict, input
                 # Sprawdzamy czy to nocka (is_night = True)
                 if shift.is_night: 
                     var = shifts[emp.id][date_str].get(shift.id)
-                    if var:
+                    if var is not None:
                         night_vars.append(var)
         
         if night_vars:
@@ -533,7 +533,7 @@ def add_soft_40h_limit(model: cp_model.CpModel, shifts: Dict, input_data: Solver
                 if date_str in shifts[emp.id]:
                     for shift_type in emp.allowed_shifts:
                         shift_var = shifts[emp.id][date_str].get(shift_type.id)
-                        if shift_var:
+                        if shift_var is not None:
                             weekly_hours.append(shift_var * shift_type.hours)
             
             if weekly_hours:
@@ -574,7 +574,7 @@ def add_soft_night_recovery(model: cp_model.CpModel, shifts: Dict, input_data: S
             for d in [day1, day2]:
                 for ns in night_shifts:
                     v = shifts[emp.id].get(d, {}).get(ns.id)
-                    if v: night_vars.append(v)
+                    if v is not None: night_vars.append(v)
             
             if len(night_vars) < 2: continue # Nie ma opcji na 2 noce
             
