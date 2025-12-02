@@ -687,15 +687,29 @@ app.post('/api/ortools/generate-schedule', authenticateCookie, async (req, res) 
             }
 
             try {
-                const result = JSON.parse(output);
-                console.log('Solver result:', result.status);
-                res.json(result);
+                // --- POPRAWKA START: Wyciąganie JSONa z logów ---
+                const jsonStartIndex = output.indexOf('{');
+                const jsonEndIndex = output.lastIndexOf('}');
+
+                if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
+                    // Wycinamy tekst od pierwszej '{' do ostatniej '}'
+                    const jsonString = output.substring(jsonStartIndex, jsonEndIndex + 1);
+
+                    const result = JSON.parse(jsonString);
+                    console.log('Solver result status:', result.status);
+                    res.json(result);
+                } else {
+                    throw new Error('No JSON object found in Python output');
+                }
+                // --- POPRAWKA KONIEC ---
+
             } catch (err) {
                 console.error('Failed to parse Python output:', err);
-                console.error('Raw output:', output);
+                console.error('Raw output (first 500 chars):', output.substring(0, 500));
                 res.status(500).json({
                     error: 'Invalid JSON from solver',
-                    details: output.substring(0, 500)
+                    details: 'Parser error: ' + err.message,
+                    rawOutput: output // Zwracamy całość, żebyś widział logi w razie czego
                 });
             }
         });
