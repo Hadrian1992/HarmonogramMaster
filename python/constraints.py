@@ -358,17 +358,17 @@ def add_soft_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     
     # 1. Hour balancing (prefer equal hours among employees)
     balance_penalty = add_hour_balancing_objective(model, shifts, input_data)
-    if balance_penalty:
+    if balance_penalty is not None:
         objectives.append(balance_penalty * 10)  # Weight: 10
     
     # 2. Weekend fairness
     weekend_penalty = add_weekend_fairness_objective(model, shifts, input_data)
-    if weekend_penalty:
+    if weekend_penalty is not None:
         objectives.append(weekend_penalty * 5)  # Weight: 5
     
     # 3. Employee preferences
     preference_penalty = add_preference_objective(model, shifts, input_data)
-    if preference_penalty:
+    if preference_penalty is not None:
         objectives.append(preference_penalty * 3)  # Weight: 3
     
 
@@ -377,13 +377,13 @@ def add_soft_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     # 4. Soft 40h limit (Weight: 50 per hour over 40)
     # Przenosimy z HARD do SOFT
     overtime_penalty = add_soft_40h_limit(model, shifts, input_data)
-    if overtime_penalty:
+    if overtime_penalty is not None:
         objectives.append(overtime_penalty * 50) # 50 pkt kary za każdą nadgodzinę
 
     # 5. Soft Night Shift Recovery (Weight: 100 per violation)
     # Przenosimy z HARD do SOFT
     recovery_penalty = add_soft_night_recovery(model, shifts, input_data)
-    if recovery_penalty:
+    if recovery_penalty is not None:
         objectives.append(recovery_penalty * 100) # 100 pkt kary za brak regeneracji po nocce 
 
     return objectives
