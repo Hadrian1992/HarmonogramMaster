@@ -66,7 +66,6 @@ class Constraint:
 
 @dataclass
 class SolverInput:
-    class SolverInput:
     """Input do solvera"""
     employees: List[Employee]
     constraints: List[Constraint]
