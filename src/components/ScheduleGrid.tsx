@@ -118,6 +118,7 @@ export const ScheduleGrid: React.FC = () => {
             const startDate = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-01`;
             const endDate = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-${daysInMonth}`;
 
+            console.log('🔍 Calling validator endpoint:', `${serverUrl}/api/ortools/validate`);
             const response = await fetch(`${serverUrl}/api/ortools/validate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

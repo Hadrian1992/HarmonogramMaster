@@ -748,6 +748,7 @@ app.post('/api/ortools/generate-schedule', authenticateCookie, async (req, res) 
 
 // OR-Tools Schedule Validator - Checks specific rules and returns violations
 app.post('/api/ortools/validate', authenticateCookie, async (req, res) => {
+    console.log('🔍 VALIDATOR ENDPOINT CALLED'); // Debug log
     const inputData = req.body;
 
     try {
