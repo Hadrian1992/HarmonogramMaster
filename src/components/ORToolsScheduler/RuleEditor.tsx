@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Employee } from '../../types';
 import type { ORToolsConstraint } from '../../utils/ortoolsService';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import CustomDatePicker from '../ui/CustomDatePicker';
 
 interface RuleEditorProps {
     employees: Employee[];
@@ -15,6 +16,7 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
         type: 'ABSENCE',
         isHard: true,
         dateRange: ['', ''],
+        date: '',
         description: ''
     });
 
@@ -38,8 +40,8 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
             return;
         }
 
-        // Walidacja dla Absencji (zakres dat)
-        if (newRule.type === 'ABSENCE') {
+        // Walidacja dla Absencji i Wolnego (zakres dat)
+        if (newRule.type === 'ABSENCE' || newRule.type === 'FREE_TIME') {
             if (!newRule.dateRange?.[0] || !newRule.dateRange?.[1]) {
                 setError('Wprowadź pełny zakres dat (od - do).');
                 return;
@@ -50,12 +52,11 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
             }
         }
         // Walidacja dla Preferencji (pojedyncza data)
-        else {
+        else if (newRule.type === 'PREFERENCE') {
             if (!newRule.date) {
                 setError('Wybierz datę dla tej preferencji.');
                 return;
             }
-            // Domyślny opis jeśli pusty
             if (!newRule.description) {
                 newRule.description = 'Preferowana zmiana';
             }
@@ -84,17 +85,24 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                         {value.map((rule, index) => {
                             const employeeName = employees.find(e => e.id === rule.employeeId)?.name || 'Nieznany pracownik';
                             const isAbsence = rule.type === 'ABSENCE';
+                            const isFreeTime = rule.type === 'FREE_TIME';
 
                             return (
                                 <div
                                     key={index}
                                     className={`group flex items-center justify-between p-3 rounded-lg border text-sm transition-all hover:shadow-sm ${isAbsence
                                             ? 'bg-red-50/50 border-red-100 dark:bg-red-900/10 dark:border-red-900/30'
-                                            : 'bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30'
+                                            : isFreeTime
+                                                ? 'bg-amber-50/50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30'
+                                                : 'bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isAbsence ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isAbsence
+                                                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                                : isFreeTime
+                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
                                             }`}>
                                             {employeeName.substring(0, 2).toUpperCase()}
                                         </div>
@@ -104,9 +112,13 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                                                 <span className="font-medium text-gray-900 dark:text-white truncate">
                                                     {employeeName}
                                                 </span>
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold tracking-wide ${isAbsence ? 'text-red-600 bg-red-100/50 dark:text-red-400' : 'text-blue-600 bg-blue-100/50 dark:text-blue-400'
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold tracking-wide ${isAbsence
+                                                        ? 'text-red-600 bg-red-100/50 dark:text-red-400'
+                                                        : isFreeTime
+                                                            ? 'text-amber-600 bg-amber-100/50 dark:text-amber-400'
+                                                            : 'text-blue-600 bg-blue-100/50 dark:text-blue-400'
                                                     }`}>
-                                                    {isAbsence ? 'Absencja' : 'Preferencja'}
+                                                    {isAbsence ? 'Absencja' : isFreeTime ? 'Wolne' : 'Preferencja'}
                                                 </span>
                                             </div>
 
@@ -160,10 +172,10 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                     {/* Typ reguły */}
                     <div className="md:col-span-3">
                         <label className="block text-xs font-medium text-gray-500 mb-1.5">Typ reguły</label>
-                        <div className="flex rounded-lg bg-gray-100 dark:bg-slate-700 p-1">
+                        <div className="flex flex-col gap-1 rounded-lg bg-gray-100 dark:bg-slate-700 p-1">
                             <button
                                 onClick={() => setNewRule({ ...newRule, type: 'ABSENCE', isHard: true })}
-                                className={`flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all ${newRule.type === 'ABSENCE'
+                                className={`text-xs font-medium py-1.5 px-2 rounded-md transition-all ${newRule.type === 'ABSENCE'
                                         ? 'bg-white dark:bg-slate-600 text-red-600 dark:text-red-400 shadow-sm'
                                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
                                     }`}
@@ -171,8 +183,17 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                                 Absencja
                             </button>
                             <button
+                                onClick={() => setNewRule({ ...newRule, type: 'FREE_TIME', isHard: false })}
+                                className={`text-xs font-medium py-1.5 px-2 rounded-md transition-all ${newRule.type === 'FREE_TIME'
+                                        ? 'bg-white dark:bg-slate-600 text-amber-600 dark:text-amber-400 shadow-sm'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                    }`}
+                            >
+                                Wolne
+                            </button>
+                            <button
                                 onClick={() => setNewRule({ ...newRule, type: 'PREFERENCE', isHard: false })}
-                                className={`flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all ${newRule.type === 'PREFERENCE'
+                                className={`text-xs font-medium py-1.5 px-2 rounded-md transition-all ${newRule.type === 'PREFERENCE'
                                         ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm'
                                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
                                     }`}
@@ -198,39 +219,26 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                     </div>
 
                     {/* Pola warunkowe */}
-                    {newRule.type === 'ABSENCE' ? (
+                    {newRule.type === 'ABSENCE' || newRule.type === 'FREE_TIME' ? (
                         <div className="md:col-span-6 grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1.5">Data początkowa</label>
-                                <input
-                                    type="date"
-                                    value={newRule.dateRange?.[0] || ''}
-                                    onChange={(e) => setNewRule({ ...newRule, dateRange: [e.target.value, newRule.dateRange?.[1] || ''] })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1.5">Data końcowa</label>
-                                <input
-                                    type="date"
-                                    min={newRule.dateRange?.[0]} // Blokada dat wcześniejszych
-                                    value={newRule.dateRange?.[1] || ''}
-                                    onChange={(e) => setNewRule({ ...newRule, dateRange: [newRule.dateRange?.[0] || '', e.target.value] })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                                />
-                            </div>
+                            <CustomDatePicker
+                                value={newRule.dateRange?.[0] || ''}
+                                onChange={(date) => setNewRule({ ...newRule, dateRange: [date, newRule.dateRange?.[1] || ''] })}
+                                label="Data początkowa"
+                            />
+                            <CustomDatePicker
+                                value={newRule.dateRange?.[1] || ''}
+                                onChange={(date) => setNewRule({ ...newRule, dateRange: [newRule.dateRange?.[0] || '', date] })}
+                                label="Data końcowa"
+                            />
                         </div>
                     ) : (
                         <div className="md:col-span-6 grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1.5">Data preferencji</label>
-                                <input
-                                    type="date"
-                                    value={newRule.date || ''}
-                                    onChange={(e) => setNewRule({ ...newRule, date: e.target.value })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                                />
-                            </div>
+                            <CustomDatePicker
+                                value={newRule.date || ''}
+                                onChange={(date) => setNewRule({ ...newRule, date })}
+                                label="Data preferencji"
+                            />
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Szczegóły (opcjonalne)</label>
                                 <input

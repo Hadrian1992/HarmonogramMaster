@@ -354,6 +354,10 @@ def add_soft_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     if preference_penalty is not None:
         objectives.append(preference_penalty * 3)  # Weight: 3
     
+    # 3.5 FREE_TIME (soft absence) ← DODAJ TO
+    free_time_penalty = add_free_time_objective(model, shifts, input_data)
+    if free_time_penalty is not None:
+        objectives.append(free_time_penalty * 20)  # Weight: 20 (wyżej niż PREFERENCE)
 
    # --- NOWE SOFT RULES ---
 
@@ -690,3 +694,49 @@ def add_leader_support_rule(model: cp_model.CpModel, shifts: Dict, input_data: S
         # Jeśli lider pracuje => suma reszty zespołu >= 1
         if support_staff:
             model.Add(sum(support_staff) >= 1).OnlyEnforceIf(leader_working)
+
+def add_free_time_objective(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
+    """
+    Handle FREE_TIME constraints (soft absence with date range).
+    User wants time off but solver can override if necessary.
+    Penalty is applied for each day worked during the requested period.
+    """
+    penalties = []
+    
+    for constraint in input_data.constraints:
+        # Tylko FREE_TIME i musi być soft (isHard=False)
+        if constraint.type != "FREE_TIME" or constraint.is_hard:
+            continue
+        
+        emp_id = constraint.employee_id
+        if not emp_id or emp_id not in shifts:
+            continue
+        
+        # FREE_TIME wymaga dateRange
+        if not constraint.date_range:
+            print(f"Warning: FREE_TIME constraint for {emp_id} missing date_range", file=sys.stderr)
+            continue
+        
+        start_str, end_str = constraint.date_range
+        start = datetime.strptime(start_str, '%Y-%m-%d')
+        end = datetime.strptime(end_str, '%Y-%m-%d')
+        
+        # Iteruj po każdym dniu w zakresie
+        current = start
+        while current <= end:
+            date_str = current.strftime('%Y-%m-%d')
+            
+            if date_str in shifts[emp_id]:
+                day_shifts = list(shifts[emp_id][date_str].values())
+                if day_shifts:
+                    # Utwórz zmienną: czy pracownik pracuje w tym dniu?
+                    is_working = model.NewBoolVar(f'free_time_violation_{emp_id}_{date_str}')
+                    model.Add(sum(day_shifts) >= 1).OnlyEnforceIf(is_working)
+                    model.Add(sum(day_shifts) == 0).OnlyEnforceIf(is_working.Not())
+                    
+                    # Kara za pracę w dniu wolnym
+                    penalties.append(is_working)
+            
+            current += timedelta(days=1)
+    
+    return sum(penalties) if penalties else None

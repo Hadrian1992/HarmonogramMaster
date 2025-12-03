@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { getHolidays } from '../../utils/holidays';
 
 interface DemandCalendarProps {
@@ -8,7 +8,6 @@ interface DemandCalendarProps {
 }
 
 export default function DemandCalendar({ dateRange, value, onChange }: DemandCalendarProps) {
-    const [isInitialized, setIsInitialized] = useState(false);
 
     // Memoizowana lista dat i świąt
     const { dates, holidays, stats } = useMemo(() => {
@@ -49,19 +48,28 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
         };
     }, [value]);
 
-    // Auto-fill z optymalizacją (uruchamia się tylko gdy zmieni się zakres i nie ma danych)
+    // Auto-fill z optymalizacją (uruchamia się gdy zmieni się zakres dat)
     useEffect(() => {
         if (!dateRange.start || !dateRange.end) return;
 
         const start = new Date(dateRange.start);
         const end = new Date(dateRange.end);
 
-        // Sprawdź czy dane już istnieją dla tego zakresu
+        // Sprawdź czy aktualny zakres dat pasuje do istniejących danych
         const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
 
-        // Jeśli komponent jest zainicjalizowany i dane dla daty startowej już istnieją, nie rób nic
-        if (isInitialized && value[startStr] !== undefined) return;
+        const existingDates = Object.keys(value).sort();
 
+        const firstExisting = existingDates[0];
+        const lastExisting = existingDates[existingDates.length - 1];
+
+        // Jeśli dane dokładnie pasują do zakresu, nie rób nic
+        if (firstExisting === startStr && lastExisting === endStr && existingDates.length > 0) {
+            return;
+        }
+
+        // W przeciwnym razie, wygeneruj nowy kalendarz
         const newDemand: Record<string, number> = {};
         const year = start.getFullYear();
         const month = start.getMonth() + 1;
@@ -75,13 +83,12 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
             const isHoliday = holidayDates.has(dateStr);
 
             // Domyślnie: 2 w dni robocze, 1 w weekendy/święta
-            newDemand[dateStr] = value[dateStr] ?? (isWeekend || isHoliday ? 1 : 2);
+            newDemand[dateStr] = value[dateStr] ?? (isWeekend || isHoliday ? 2 : 3);
 
             current.setDate(current.getDate() + 1);
         }
 
         onChange(newDemand);
-        setIsInitialized(true);
     }, [dateRange.start, dateRange.end]); // Usunięto 'value' i 'onChange' z zależności, aby uniknąć pętli
 
     // Optymalizowana funkcja aktualizacji
@@ -183,16 +190,16 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
 
                 <div className="flex flex-wrap gap-2">
                     <button
-                        onClick={() => fillWeekdays(2)}
+                        onClick={() => fillWeekdays(3)}
                         className="px-3 py-1.5 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
                     >
-                        Dni robocze → 2
+                        Dni robocze → 3
                     </button>
                     <button
-                        onClick={() => fillWeekends(1)}
+                        onClick={() => fillWeekends(2)}
                         className="px-3 py-1.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                     >
-                        Weekendy → 1
+                        Weekendy → 2
                     </button>
                     <button
                         onClick={() => fillWeekends(0)}
@@ -233,8 +240,8 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
                         <div
                             key={date}
                             className={`p-3 rounded-lg border transition-all ${isWeekend || isHoliday
-                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                                    : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-gray-600'
+                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                                : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-gray-600'
                                 } ${hasWarning ? 'ring-2 ring-yellow-400 dark:ring-yellow-600' : ''}`}
                         >
                             <div className="flex justify-between items-start mb-1">

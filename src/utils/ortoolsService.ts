@@ -12,13 +12,13 @@ export interface ORToolsEmployee {
 }
 
 export interface ORToolsConstraint {
-    type: 'ABSENCE' | 'PREFERENCE' | 'DEMAND' | 'CUSTOM';
+    type: 'ABSENCE' | 'PREFERENCE' | 'FREE_TIME' | 'DEMAND' | 'CUSTOM';
     employeeId?: string;
     date?: string;  // YYYY-MM-DD
-    dateRange?: [string, string];  // [start, end]
+    dateRange?: [string, string];  // [start, end] (dla ABSENCE, FREE_TIME)
     value?: any;
     description?: string;
-    isHard?: boolean;  // true = MUST, false = PREFER
+    isHard?: boolean;  // true = ABSENCE, false = PREFERENCE/FREE_TIME
 }
 
 export interface ORToolsRequest {
