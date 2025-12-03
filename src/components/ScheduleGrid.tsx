@@ -122,6 +122,7 @@ export const ScheduleGrid: React.FC = () => {
             const response = await fetch(`${serverUrl}/api/ortools/validate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     dateRange: { start: startDate, end: endDate },
                     employees: employeesForValidation,
