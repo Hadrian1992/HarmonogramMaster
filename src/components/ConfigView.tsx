@@ -155,7 +155,7 @@ export const ConfigView = () => {
                     <div className="grid grid-cols-3 gap-4 mb-6">
                         <div className="space-y-2">
                             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                                Rano (7-15)
+                                Rano (8-16)
                             </label>
                             <input
                                 type="number"
@@ -167,7 +167,7 @@ export const ConfigView = () => {
                         </div>
                         <div className="space-y-2">
                             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                                Popołudnie (15-20)
+                                Popołudnie (16-20)
                             </label>
                             <input
                                 type="number"

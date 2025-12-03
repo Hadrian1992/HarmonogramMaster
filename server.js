@@ -740,6 +740,60 @@ app.post('/api/ortools/generate-schedule', authenticateCookie, async (req, res) 
     }
 });
 
+// OR-Tools Schedule Validator - Checks specific rules and returns violations
+app.post('/api/ortools/validate', authenticateCookie, async (req, res) => {
+    const inputData = req.body;
+
+    try {
+        const { spawn } = await import('child_process');
+        const isWindows = process.platform === 'win32';
+        const pythonPath = process.env.PYTHON_PATH || path.join(
+            __dirname,
+            'python',
+            'venv',
+            isWindows ? 'Scripts' : 'bin',
+            isWindows ? 'python.exe' : 'python3'
+        );
+        const scriptPath = path.join(__dirname, 'python', 'validator.py');
+
+        const python = spawn(pythonPath, [scriptPath], {
+            cwd: path.join(__dirname, 'python')
+        });
+
+        let output = '';
+        let errorOutput = '';
+
+        python.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+
+        python.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+        });
+
+        python.stdin.write(JSON.stringify(inputData));
+        python.stdin.end();
+
+        python.on('close', (code) => {
+            if (code !== 0) {
+                console.error('Validator failed:', errorOutput);
+                return res.status(500).json({ error: 'Validator script failed', details: errorOutput });
+            }
+            try {
+                const result = JSON.parse(output);
+                res.json(result);
+            } catch (e) {
+                console.error('Validator JSON parse error:', e);
+                res.status(500).json({ error: 'Invalid response from validator' });
+            }
+        });
+
+    } catch (error) {
+        console.error('Validator error:', error);
+        res.status(500).json({ error: 'Failed to validate schedule' });
+    }
+});
+
 /**
  * Merge absences from existing schedule into constraints
  */
@@ -985,8 +1039,8 @@ app.post('/api/send-schedules-files', authenticateCookie, upload.any(), async (r
                 await transporter.sendMail({
                     from: process.env.SMTP_USER,
                     to: emp.email,
-                    subject: 'Nowy Grafik Pracy',
-                    text: 'W załączniku przesyłamy grafik.',
+                    subject: `Nowy Grafik Pracy ${monthName}`,
+                    text: `Witaj ${emp.name},\n\nW załączniku przesyłamy harmonogram pracy na miesiąc ${monthName}.\n\nPozdrawiamy,\nZespół`,
                     attachments: attachments
                 });
                 sentCount++;

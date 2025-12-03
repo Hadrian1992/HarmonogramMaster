@@ -57,6 +57,15 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
 
     # 10. Minimum one night shift per day
     add_min_one_night_shift_per_day(model, shifts, input_data)
+
+    # --- 1. NOWOŚĆ: Obsługa walidacji ręcznej (wymuszanie zmian) ---
+    add_fixed_shift_constraints(model, shifts, input_data)
+    
+    # --- 2. NOWOŚĆ: Ciągłość obsady 24h (Rano/Popołudnie/Noc) ---
+    add_coverage_constraints(model, shifts, input_data)
+    
+    # --- 3. NOWOŚĆ: Wsparcie lidera (Lider nie może być sam) ---
+    add_leader_support_rule(model, shifts, input_data)
     
     print("Hard constraints added successfully")
 
@@ -70,68 +79,42 @@ def add_one_shift_per_day(model: cp_model.CpModel, shifts: Dict, input_data: Sol
                     model.Add(sum(day_shifts) <= 1)
 
 def add_11h_rest_constraint(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput, history_shifts: Dict[str, ShiftType]):
-    """
-    11h daily rest between shifts, now including history.
-    """
+    """Twoja funkcja z obsługą historii."""
     dates = input_data.get_date_list()
-    if not dates:
-        return # Nic do zrobienia, jeśli nie ma dat
-        
+    if not dates: return
+    
     first_date = dates[0]
-
     for emp in input_data.employees:
-        # --- NOWY BLOK: SPRAWDZANIE HISTORII ---
-        # Sprawdź odpoczynek pomiędzy ostatnim dniem z historii a pierwszym dniem nowego grafiku.
         if emp.id in history_shifts:
             shift_before = history_shifts[emp.id]
-            
-            # Iteruj po wszystkich możliwych zmianach w pierwszym dniu grafiku
-            for shift_on_first_day in emp.allowed_shifts:
-                
-                # Oblicz przerwę między historyczną zmianą a tą nową
-                gap = calculate_rest_gap(shift_before, shift_on_first_day)
-                
+            for shift_now in emp.allowed_shifts:
+                gap = calculate_rest_gap(shift_before, shift_now)
                 if gap < 11:
-                    # Jeśli przerwa jest za krótka, zablokuj tę zmianę w pierwszym dniu.
-                    # Nie możemy zmienić przeszłości, ale możemy zabronić przyszłości.
-                    first_day_var = shifts[emp.id][first_date].get(shift_on_first_day.id)
-                    if first_day_var is not None:
-                        print(f"DEBUG: Blocking {shift_on_first_day.id} for {emp.name} on {first_date} due to history.", file=sys.stderr)
-                        model.Add(first_day_var == 0) # Twardy zakaz tej zmiany
-        # --- KONIEC NOWEGO BLOKU ---
+                    if shift_now.id in shifts[emp.id][first_date]:
+                        # print(f"DEBUG: Blocking {shift_now.id} for {emp.name} on {first_date}", file=sys.stderr)
+                        model.Add(shifts[emp.id][first_date][shift_now.id] == 0)
 
-        # Istniejąca logika dla odpoczynku WEWNĄTRZ generowanego zakresu
-        for i in range(len(dates) - 1):
-            today = dates[i]
-            tomorrow = dates[i + 1]
+    for i in range(len(dates) - 1):
+        today = dates[i]
+        tomorrow = dates[i + 1]
+        for emp in input_data.employees:
+            if emp.id not in shifts or today not in shifts[emp.id] or tomorrow not in shifts[emp.id]: continue
             
-            if emp.id not in shifts or today not in shifts[emp.id] or tomorrow not in shifts[emp.id]:
-                continue
-            
-            for shift_today in emp.allowed_shifts:
-                for shift_tomorrow in emp.allowed_shifts:
-                    gap = calculate_rest_gap(shift_today, shift_tomorrow)
-                    
+            for s1 in emp.allowed_shifts:
+                for s2 in emp.allowed_shifts:
+                    gap = calculate_rest_gap(s1, s2)
                     if gap < 11:
-                        today_var = shifts[emp.id][today].get(shift_today.id)
-                        tomorrow_var = shifts[emp.id][tomorrow].get(shift_tomorrow.id)
-                        
-                        if today_var is not None and tomorrow_var is not None:
-                            model.AddImplication(today_var, tomorrow_var.Not())
+                        if s1.id in shifts[emp.id][today] and s2.id in shifts[emp.id][tomorrow]:
+                            v1 = shifts[emp.id][today][s1.id]
+                            v2 = shifts[emp.id][tomorrow][s2.id]
+                            model.AddImplication(v1, v2.Not())
 
 def calculate_rest_gap(shift1: ShiftType, shift2: ShiftType) -> int:
-    """Calculate rest gap in hours between two shifts"""
-    # If shift1 crosses midnight (e.g., 20-8)
-    if shift1.start_hour > shift1.end_hour:
-        # Shift ends next day at end_hour
-        # Shift2 starts at start_hour
-        gap = shift2.start_hour - shift1.end_hour
+    """Oblicza przerwę w godzinach (NAPRAWIONA)."""
+    if shift1.start_hour > shift1.end_hour: # Nocka
+        return shift2.start_hour - shift1.end_hour
     else:
-        # Shift1 ends same day
-        # Gap = (24 - end1) + start2
-        gap = (24 - shift1.end_hour) + shift2.start_hour
-    
-    return gap
+        return (24 - shift1.end_hour) + shift2.start_hour
 
 def add_35h_weekly_rest(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
     """
@@ -599,3 +582,111 @@ def add_soft_night_recovery(model: cp_model.CpModel, shifts: Dict, input_data: S
             # Analogicznie dla day4 (opcjonalnie, można odpuścić dla uproszczenia)
             
     return sum(penalties) if penalties else None
+
+def add_fixed_shift_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
+    """
+    Pozwala walidatorowi wymuszać konkretne zmiany z GUI.
+    Obsługuje typy constraints: 'SHIFT', 'FIXED', 'FIXED_SHIFT'.
+    """
+    for constraint in input_data.constraints:
+        if constraint.type not in ["SHIFT", "FIXED", "FIXED_SHIFT"]:
+            continue
+        
+        emp_id = constraint.employee_id
+        if not emp_id or emp_id not in shifts:
+            continue
+            
+        date_str = constraint.date
+        target_shift_id = constraint.value
+        
+        # Sprawdzamy czy taka zmiana jest dostępna w modelu (w allowedShifts)
+        if date_str in shifts[emp_id] and target_shift_id in shifts[emp_id][date_str]:
+            shift_var = shifts[emp_id][date_str][target_shift_id]
+            
+            # Jeśli is_hard=True (domyślnie), wymuszamy tę zmianę
+            if constraint.is_hard:
+                model.Add(shift_var == 1)
+        else:
+            # Ostrzeżenie w logach, jeśli GUI wysłało zmianę, której model nie zna
+            print(f"Warning: Forced shift '{target_shift_id}' not found for {emp_id} on {date_str}", file=sys.stderr)
+
+def add_coverage_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
+    """
+    Gwarantuje ciągłość pracy 24/7 poprzez podział doby na strefy.
+    Wymaga minimum 1 osoby w każdej strefie:
+    - RANO (start 6:00-14:00)
+    - POPOŁUDNIE (start 14:00-22:00 lub pokrycie popołudnia)
+    - NOC (start >19:00 lub is_night)
+    """
+    for date_str in input_data.get_date_list():
+        morning_staff = []
+        afternoon_staff = []
+        night_staff = []
+
+        for emp in input_data.employees:
+            if emp.id not in shifts or date_str not in shifts[emp.id]:
+                continue
+                
+            for shift_type in emp.allowed_shifts:
+                if shift_type.id in shifts[emp.id][date_str]:
+                    var = shifts[emp.id][date_str][shift_type.id]
+                    
+                    # Definicja stref (możesz dostosować godziny)
+                    start = shift_type.start_hour
+                    end = shift_type.end_hour
+                    
+                    # RANO (np. 8-14, 8-16)
+                    if 6 <= start < 14:
+                        morning_staff.append(var)
+                    
+                    # POPOŁUDNIE (np. 14-20, ale też 8-20, 12-20)
+                    # Warunek: startuje po południu LUB trwa przez popołudnie (startuje rano i kończy wieczorem)
+                    if (12 <= start < 20) or (start < 14 and end > 16):
+                        afternoon_staff.append(var)
+                    
+                    # NOC (np. 20-8, 19-7)
+                    if shift_type.is_night or start >= 19:
+                        night_staff.append(var)
+
+        # Twarde reguły: minimum 1 osoba w każdej strefie
+        # (Jeśli brakuje ludzi w allowed_shifts na daną porę, solver zgłosi INFEASIBLE)
+        if morning_staff: model.Add(sum(morning_staff) >= 1)
+        if afternoon_staff: model.Add(sum(afternoon_staff) >= 1)
+        if night_staff: model.Add(sum(night_staff) >= 1)
+
+def add_leader_support_rule(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
+    """
+    Jeśli pracuje Lider (Maria), musi pracować też ktoś inny (pomoc).
+    Szukamy pracownika, który ma 'Maria' lub 'Pankowska' w nazwie, lub ma specjalną flagę.
+    """
+    # Próba znalezienia lidera po nazwisku lub roli (dostosuj do swoich danych)
+    leader = next((e for e in input_data.employees if "Maria" in e.name or "Pankowska" in e.name), None)
+    
+    if not leader: 
+        return
+
+    for date_str in input_data.get_date_list():
+        if leader.id not in shifts or date_str not in shifts[leader.id]:
+            continue
+            
+        # Zmienna pomocnicza: czy lider pracuje w ten dzień?
+        leader_working = model.NewBoolVar(f'leader_working_{date_str}')
+        leader_shifts_vars = list(shifts[leader.id][date_str].values())
+        
+        if not leader_shifts_vars:
+            continue
+            
+        # Powiązanie zmiennej bool z faktycznymi zmianami
+        model.Add(sum(leader_shifts_vars) == 1).OnlyEnforceIf(leader_working)
+        model.Add(sum(leader_shifts_vars) == 0).OnlyEnforceIf(leader_working.Not())
+        
+        # Zbieramy resztę zespołu w tym dniu
+        support_staff = []
+        for emp in input_data.employees:
+            if emp.id == leader.id: continue # Pomijamy lidera
+            if emp.id in shifts and date_str in shifts[emp.id]:
+                support_staff.extend(shifts[emp.id][date_str].values())
+        
+        # Jeśli lider pracuje => suma reszty zespołu >= 1
+        if support_staff:
+            model.Add(sum(support_staff) >= 1).OnlyEnforceIf(leader_working)

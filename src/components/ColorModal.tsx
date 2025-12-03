@@ -12,6 +12,7 @@ const DEFAULT_SHIFTS = [
     { label: '8-15', value: '8-15' },
     { label: '8-16', value: '8-16' },
     { label: 'D (8-20)', value: '8-20' },
+    { label: '10-20', value: '10-20' },
     { label: '14-20', value: '14-20' },
     { label: 'N (20-8)', value: '20-8' },
     { label: 'K 4h', value: 'K' },

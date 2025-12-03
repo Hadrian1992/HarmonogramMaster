@@ -4,7 +4,7 @@ import { getDaysInMonth, format, setDate, isWeekend } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import type { ShiftType } from '../types';
 import clsx from 'clsx';
-import { FileDown, Download, Upload, Copy, ClipboardPaste, LayoutTemplate, Plus, Trash2, Play, X, Palette, Mail, CheckCircle, AlertCircle, UserPlus, Search } from 'lucide-react';
+import { FileDown, Download, Upload, Copy, ClipboardPaste, LayoutTemplate, Plus, Trash2, Play, X, Palette, Mail, CheckCircle, AlertCircle, UserPlus, Search, RefreshCw } from 'lucide-react';
 import { exportToPDF } from '../utils/pdfExport';
 import { exportScheduleData, importScheduleData } from '../utils/dataBackup';
 import { ShiftBlock } from './ShiftBlock';
@@ -45,6 +45,8 @@ export const ScheduleGrid: React.FC = () => {
     const [replacementContext, setReplacementContext] = useState<{ date: string; empName: string; shiftType: string } | null>(null);
     const [replacementError, setReplacementError] = useState<string | undefined>(undefined);
     const [includeContactHours, setIncludeContactHours] = useState(false);
+    const [validationResult, setValidationResult] = React.useState<{ status: string, violations: any[] } | null>(null);
+    const [isChecking, setIsChecking] = React.useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +57,92 @@ export const ScheduleGrid: React.FC = () => {
     if (isMobile) {
         return <ScheduleGridMobile />;
     }
+
+    const handleValidateWithAI = async () => {
+        setIsChecking(true);
+        setValidationResult(null);
+
+        const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+        try {
+            const validationConstraints: any[] = [];
+            // Kopia pracowników (głęboka), żeby nie modyfikować oryginału
+            const configEmployees = useScheduleStore.getState().ortoolsConfig.employees;
+
+            let employeesForValidation = configEmployees.length > 0
+                ? JSON.parse(JSON.stringify(configEmployees))
+                : schedule.employees.map(e => ({
+                    id: e.id,
+                    name: e.name,
+                    allowedShifts: ['8-14', '8-15', '8-16', '8-20', '14-20', '20-8', 'W', 'UW', 'L4', 'K 4'],
+                    contracts: []
+                }));
+
+            // Zamiana grafiku na reguły dla solvera
+            schedule.employees.forEach(emp => {
+                Object.values(emp.shifts).forEach(shift => {
+                    // Filter for current month
+                    if (!shift.date.startsWith(`${schedule.year}-${String(schedule.month).padStart(2, '0')}`)) return;
+
+                    let shiftValue = shift.type as string;
+                    if (shift.type === 'WORK') {
+                        if (shift.startHour !== undefined && shift.endHour !== undefined) {
+                            shiftValue = `${shift.startHour}-${shift.endHour}`;
+                        } else {
+                            shiftValue = '8-16';
+                        }
+                    } else if (shift.type === 'K') {
+                        shiftValue = `K ${shift.contactHours || shift.hours}`;
+                    }
+
+                    validationConstraints.push({
+                        type: "SHIFT",
+                        employeeId: emp.id,
+                        date: shift.date,
+                        value: shiftValue,
+                        isHard: true
+                    });
+
+                    // Trik: Dodajemy nietypowe zmiany do listy allowedShifts, żeby solver nie zgłupiał
+                    const empIndex = employeesForValidation.findIndex((e: any) => e.id === emp.id);
+                    if (empIndex !== -1) {
+                        const empVal = employeesForValidation[empIndex];
+                        if (!empVal.allowedShifts.includes(shiftValue)) {
+                            empVal.allowedShifts.push(shiftValue);
+                        }
+                    }
+                });
+            });
+
+            const daysInMonth = getDaysInMonth(new Date(schedule.year, schedule.month - 1));
+            const startDate = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-01`;
+            const endDate = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-${daysInMonth}`;
+
+            const response = await fetch(`${serverUrl}/api/ortools/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dateRange: { start: startDate, end: endDate },
+                    employees: employeesForValidation,
+                    demand: useScheduleStore.getState().ortoolsConfig.demand || {},
+                    constraints: validationConstraints,
+                    existingSchedule: {}
+                })
+            });
+
+            const result = await response.json();
+            if (result.status === 'OK') {
+                setValidationResult({ status: 'SUCCESS', violations: [] });
+            } else {
+                setValidationResult({ status: 'ERROR', violations: result.violations || [] });
+            }
+        } catch (error) {
+            console.error(error);
+            setValidationResult({ status: 'ERROR', violations: [{ message: 'Błąd połączenia z serwerem walidacji.' }] });
+        } finally {
+            setIsChecking(false);
+        }
+    };
 
     const handleSendSchedules = async () => {
         setSending(true);
@@ -384,10 +472,14 @@ export const ScheduleGrid: React.FC = () => {
         { label: '8-14', value: '8-14', color: 'bg-cyan-50 hover:bg-cyan-100 text-cyan-700', darkColor: 'dark:bg-cyan-900/20 dark:hover:bg-cyan-900/40 dark:text-cyan-200', tooltip: 'Zmiana 8-14' },
         { label: '8-15', value: '8-15', color: 'bg-teal-50 hover:bg-teal-100 text-teal-700', darkColor: 'dark:bg-teal-900/20 dark:hover:bg-teal-900/40 dark:text-teal-200', tooltip: 'Zmiana 8-15' },
         { label: '8-16', value: '8-16', color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', darkColor: 'dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-200', tooltip: 'Zmiana 8-16' },
-        { label: 'D (8-20)', value: '8-20', color: 'bg-blue-100 hover:bg-blue-200 text-blue-800', darkColor: 'dark:bg-blue-900/40 dark:hover:bg-blue-900/60 dark:text-blue-100', tooltip: 'Dzień (8-20)' },
+        { label: '8-20', value: '8-20', color: 'bg-blue-100 hover:bg-blue-200 text-blue-800', darkColor: 'dark:bg-blue-900/40 dark:hover:bg-blue-900/60 dark:text-blue-100', tooltip: 'Dzień (8-20)' },
+        { label: '10-20', value: '10-20', color: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-800', darkColor: 'dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-100', tooltip: 'Dzień (10-20)' },
         { label: '14-20', value: '14-20', color: 'bg-sky-50 hover:bg-sky-100 text-sky-700', darkColor: 'dark:bg-sky-900/20 dark:hover:bg-sky-900/40 dark:text-sky-200', tooltip: 'Zmiana 14-20' },
-        { label: 'N (20-8)', value: '20-8', color: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-800', darkColor: 'dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-100', tooltip: 'Noc (20-8)' },
+        { label: 'N 20-8', value: '20-8', color: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-800', darkColor: 'dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-100', tooltip: 'Noc (20-8)' },
         { label: 'K 4h', value: 'K 4', color: 'bg-purple-100 hover:bg-purple-200 text-purple-800', darkColor: 'dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-100', tooltip: 'Godziny kontaktów (4h)' },
+        { label: 'K 6h', value: 'K 6', color: 'bg-purple-100 hover:bg-purple-200 text-purple-800', darkColor: 'dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-100', tooltip: 'Godziny kontaktów (6h)' },
+        { label: 'K 8h', value: 'K 8', color: 'bg-purple-100 hover:bg-purple-200 text-purple-800', darkColor: 'dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-100', tooltip: 'Godziny kontaktów (8h)' },
+        { label: 'K 10h', value: 'K 10', color: 'bg-purple-100 hover:bg-purple-200 text-purple-800', darkColor: 'dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-100', tooltip: 'Godziny kontaktów (10h)' },
         { label: 'Wolne', value: 'W', color: 'bg-gray-100 hover:bg-gray-200 text-gray-800', darkColor: 'dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200', tooltip: 'Dzień wolny' },
         { label: 'UW', value: 'UW', color: 'bg-green-100 hover:bg-green-200 text-green-800', darkColor: 'dark:bg-green-900/30 dark:hover:bg-green-900/40 dark:text-green-200', tooltip: 'Urlop Wypoczynkowy' },
         { label: 'UŻ', value: 'UŻ', color: 'bg-teal-100 hover:bg-teal-200 text-teal-800', darkColor: 'dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-200', tooltip: 'Urlop na Żądanie (4 dni/rok)' },
@@ -499,6 +591,16 @@ export const ScheduleGrid: React.FC = () => {
                             size="sm"
                         >
                             Kolory
+                        </GlassButton>
+                        <GlassButton
+                            onClick={handleValidateWithAI}
+                            icon={CheckCircle}
+                            variant="primary"
+                            size="sm"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white border-none"
+                            disabled={isChecking}
+                        >
+                            {isChecking ? '...' : 'Sprawdź (AI)'}
                         </GlassButton>
                     </div>
                 </div>
@@ -675,6 +777,39 @@ export const ScheduleGrid: React.FC = () => {
                         ))}
                     </div>
                 </div>
+
+                {/* Validation Alerts */}
+                {isChecking && (
+                    <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg flex items-center gap-2 animate-pulse border border-blue-200 dark:border-blue-800">
+                        <RefreshCw className="animate-spin" size={20} />
+                        <span>Sprawdzam zgodność z Kodeksem Pracy i regułami...</span>
+                    </div>
+                )}
+                {validationResult?.status === 'SUCCESS' && (
+                    <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/20 border border-green-400 dark:border-green-800 text-green-800 dark:text-green-200 rounded-lg flex items-center gap-2">
+                        <CheckCircle size={20} />
+                        <div>
+                            <strong>Świetnie!</strong> Grafik jest zgodny ze wszystkimi regułami.
+                        </div>
+                    </div>
+                )}
+                {validationResult?.status === 'ERROR' && (
+                    <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-800 text-red-800 dark:text-red-200 rounded-lg flex flex-col gap-2">
+                        <div className="flex items-center gap-2 font-bold">
+                            <AlertCircle size={20} />
+                            <span>Znaleziono błędy ({validationResult.violations.length}):</span>
+                        </div>
+                        <ul className="list-disc list-inside text-sm space-y-1 ml-6">
+                            {validationResult.violations.map((v: any, idx: number) => (
+                                <li key={idx}>
+                                    {v.date && <span className="font-mono font-bold">[{v.date}] </span>}
+                                    {v.employee && <span className="font-semibold">{v.employee}: </span>}
+                                    {v.message}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 {/* Main Table */}
                 <div className="max-w-full overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm shadow-xl">

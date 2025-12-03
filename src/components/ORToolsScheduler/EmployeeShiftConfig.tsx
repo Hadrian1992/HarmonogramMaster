@@ -9,8 +9,8 @@ interface EmployeeShiftConfigProps {
     onChange: (value: ORToolsEmployee[]) => void;
 }
 
-const DEFAULT_SHIFTS = ['8-16', '14-22', '20-8'];
-const MARIA_SHIFTS = ['8-16', '8-20'];
+const DEFAULT_SHIFTS = ['8-16', '8-18', '8-20', '10-20', '14-20', '8-20', '20-8'];
+const MARIA_SHIFTS = ['8-14', '8-15', '8-16', '8-20', '10-20'];
 
 export default function EmployeeShiftConfig({ employees, value, onChange }: EmployeeShiftConfigProps) {
 
@@ -157,8 +157,8 @@ export default function EmployeeShiftConfig({ employees, value, onChange }: Empl
                                 onChange={(e) => handleInputChange(emp.id, e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleAddShift(emp.id)}
                                 className={`w-full px-2 py-1.5 text-xs border rounded bg-white dark:bg-slate-800 dark:text-white outline-none transition-all ${errors[emp.id]
-                                        ? 'border-red-400 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-900/30'
-                                        : 'border-slate-200 dark:border-slate-600 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900/20'
+                                    ? 'border-red-400 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-900/30'
+                                    : 'border-slate-200 dark:border-slate-600 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900/20'
                                     }`}
                             />
                         </div>
