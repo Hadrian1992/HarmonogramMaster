@@ -729,10 +729,16 @@ app.post('/api/ortools/generate-schedule', authenticateCookie, async (req, res) 
         });
 
         // Timeout after 2 minutes
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
             python.kill();
-            res.status(408).json({ error: 'Solver timeout (2 minutes)' });
+            if (!res.headersSent) {
+                res.status(408).json({ error: 'Solver timeout (2 minutes)' });
+            }
         }, 120000);
+
+        python.on('close', () => {
+            clearTimeout(timeout);
+        });
 
     } catch (error) {
         console.error('OR-Tools error:', error);
@@ -774,7 +780,16 @@ app.post('/api/ortools/validate', authenticateCookie, async (req, res) => {
         python.stdin.write(JSON.stringify(inputData));
         python.stdin.end();
 
+        // Timeout after 2 minutes
+        const timeout = setTimeout(() => {
+            python.kill();
+            if (!res.headersSent) {
+                res.status(408).json({ error: 'Validator timeout (2 minutes)' });
+            }
+        }, 120000);
+
         python.on('close', (code) => {
+            clearTimeout(timeout);
             if (code !== 0) {
                 console.error('Validator failed:', errorOutput);
                 return res.status(500).json({ error: 'Validator script failed', details: errorOutput });
