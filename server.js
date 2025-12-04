@@ -734,7 +734,7 @@ app.post('/api/ortools/generate-schedule', authenticateCookie, async (req, res) 
             if (!res.headersSent) {
                 res.status(408).json({ error: 'Solver timeout (2 minutes)' });
             }
-        }, 120000);
+        }, 400000);
 
         python.on('close', () => {
             clearTimeout(timeout);
