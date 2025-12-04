@@ -28,6 +28,7 @@ def parse_input(input_json: dict) -> SolverInput:
         employee = Employee(
             id=emp_data['id'],
             name=emp_data['name'],
+            roles=emp_data.get('roles', []),  # 🆕 Phase 2: Parse roles from frontend
             allowed_shifts=allowed_shifts,
             preferences=emp_data.get('preferences', {}),
             special_rules=emp_data.get('specialRules', {})
@@ -138,7 +139,7 @@ def solve_schedule(input_data: SolverInput) -> SolverOutput:
     # Solve
     print("Solving...", file=sys.stderr)
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 60.0  # 1 minute timeout
+    solver.parameters.max_time_in_seconds = 180.0  # 1 minute timeout
     solver.parameters.log_search_progress = False
     
     status = solver.Solve(model)

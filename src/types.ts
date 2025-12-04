@@ -1,3 +1,5 @@
+import type { EmployeeRole } from './types/roles';
+
 export type ShiftType =
     | 'WORK'
     | 'L4'   // Chorobowe
@@ -26,10 +28,11 @@ export interface Shift {
 export interface Employee {
     id: string;
     name: string;
+    email?: string;
+    roles: EmployeeRole[];  // 🆕 Phase 2: Employee roles (LIDER, WYCHOWAWCA)
     shifts: Record<string, Shift>; // Key is date YYYY-MM-DD
     monthlyContactHours?: Record<string, number>; // Key is YYYY-MM (month-year), value is manual contact hours
     preferences?: string; // Notes/Preferences for AI Advisor
-    email?: string; // Email address for notifications
 }
 
 export interface Schedule {

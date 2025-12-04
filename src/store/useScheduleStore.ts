@@ -23,6 +23,28 @@ export interface ColorSettings {
     [key: string]: string; // shiftType -> color (hex)
 }
 
+export interface DemandSpec {
+    day: number;   // Shifts starting before 20:00
+    night: number; // Shifts starting at or after 20:00
+}
+
+// Helper function for backward compatibility
+function normalizeDemand(demand: Record<string, number | DemandSpec>): Record<string, DemandSpec> {
+    const normalized: Record<string, DemandSpec> = {};
+
+    Object.entries(demand).forEach(([date, value]) => {
+        if (typeof value === 'number') {
+            // Old format: assign to day, night = 0
+            normalized[date] = { day: value, night: 0 };
+        } else {
+            // New format: keep as is
+            normalized[date] = value;
+        }
+    });
+
+    return normalized;
+}
+
 interface ScheduleState {
     schedule: Schedule;
     copiedDay: CopiedDay | null;
@@ -56,7 +78,7 @@ interface ScheduleState {
     ortoolsConfig: {
         employees: ORToolsEmployee[];
         constraints: ORToolsConstraint[];
-        demand: Record<string, number>;
+        demand: Record<string, DemandSpec>;
         dateRange: { start: string; end: string };
     };
     updateORToolsConfig: (config: Partial<ScheduleState['ortoolsConfig']>) => void;
@@ -70,13 +92,13 @@ const INITIAL_SCHEDULE: Schedule = {
     month: 1,
     year: 2026,
     employees: [
-        { id: '1', name: 'Patrycja Górtowska', shifts: {}, monthlyContactHours: {} },
-        { id: '2', name: 'Maria Pankowska', shifts: {}, monthlyContactHours: {} },
-        { id: '3', name: 'Aleksandra Kijek', shifts: {}, monthlyContactHours: {} },
-        { id: '4', name: 'Dorota Mazurek', shifts: {}, monthlyContactHours: {} },
-        { id: '5', name: 'Paulina Rumińska', shifts: {}, monthlyContactHours: {} },
-        { id: '6', name: 'Agnieszka Olszewska', shifts: {}, monthlyContactHours: {} },
-        { id: '7', name: 'Milena Budka', shifts: {}, monthlyContactHours: {} },
+        { id: '1', name: 'Patrycja Górtowska', roles: ['WYCHOWAWCA'], shifts: {}, monthlyContactHours: {} },
+        { id: '2', name: 'Maria Pankowska', roles: ['LIDER'], shifts: {}, monthlyContactHours: {} },
+        { id: '3', name: 'Aleksandra Kijek', roles: ['WYCHOWAWCA'], shifts: {}, monthlyContactHours: {} },
+        { id: '4', name: 'Dorota Mazurek', roles: ['WYCHOWAWCA'], shifts: {}, monthlyContactHours: {} },
+        { id: '5', name: 'Paulina Rumińska', roles: ['WYCHOWAWCA'], shifts: {}, monthlyContactHours: {} },
+        { id: '6', name: 'Agnieszka Olszewska', roles: ['WYCHOWAWCA'], shifts: {}, monthlyContactHours: {} },
+        { id: '7', name: 'Milena Budka', roles: ['WYCHOWAWCA'], shifts: {}, monthlyContactHours: {} },
     ]
 };
 
@@ -109,7 +131,14 @@ export const useScheduleStore = create<ScheduleState>()(
                     ...state.schedule,
                     employees: [
                         ...state.schedule.employees,
-                        { id: Math.random().toString(36).substr(2, 9), name, email, shifts: {}, monthlyContactHours: {} }
+                        {
+                            id: Math.random().toString(36).substr(2, 9),
+                            name,
+                            email,
+                            roles: ['WYCHOWAWCA'],  // 🆕 Default role for new employees
+                            shifts: {},
+                            monthlyContactHours: {}
+                        }
                     ]
                 }
             })),
@@ -436,6 +465,27 @@ export const useScheduleStore = create<ScheduleState>()(
         {
             name: 'harmonogram-storage',
             storage: createJSONStorage(() => localStorage),
+            onRehydrateStorage: () => (state) => {
+                // Migrate old demand format to new format
+                if (state?.ortoolsConfig?.demand) {
+                    state.ortoolsConfig.demand = normalizeDemand(state.ortoolsConfig.demand);
+                }
+
+                // 🆕 Phase 2: Auto-assign roles to employees without them
+                if (state?.schedule?.employees) {
+                    state.schedule.employees = state.schedule.employees.map(emp => {
+                        if (!emp.roles || emp.roles.length === 0) {
+                            // Auto-detect Maria Pankowska and assign LIDER
+                            if (emp.name?.includes('Maria') && emp.name?.includes('Pankowska')) {
+                                return { ...emp, roles: ['LIDER'] };
+                            }
+                            // All others get WYCHOWAWCA
+                            return { ...emp, roles: ['WYCHOWAWCA'] };
+                        }
+                        return emp;
+                    });
+                }
+            },
         }
     )
 );

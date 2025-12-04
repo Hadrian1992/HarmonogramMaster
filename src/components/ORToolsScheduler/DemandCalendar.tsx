@@ -1,10 +1,11 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { getHolidays } from '../../utils/holidays';
+import type { DemandSpec } from '../../store/useScheduleStore';
 
 interface DemandCalendarProps {
     dateRange: { start: string; end: string };
-    value: Record<string, number>;
-    onChange: (value: Record<string, number>) => void;
+    value: Record<string, DemandSpec>;
+    onChange: (value: Record<string, DemandSpec>) => void;
 }
 
 export default function DemandCalendar({ dateRange, value, onChange }: DemandCalendarProps) {
@@ -14,7 +15,7 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
         const sortedDates = Object.keys(value).sort();
 
         if (sortedDates.length === 0) {
-            return { dates: [], holidays: new Set<string>(), stats: { total: 0, average: 0, weekdays: 0, weekends: 0 } };
+            return { dates: [], holidays: new Set<string>(), stats: { totalDay: 0, totalNight: 0, total: 0, average: 0, weekdays: 0, weekends: 0 } };
         }
 
         const start = new Date(sortedDates[0]);
@@ -24,22 +25,29 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
         const holidayDates = new Set(holidayList.map(h => h.date));
 
         // Oblicz statystyki
-        let total = 0;
+        let totalDay = 0;
+        let totalNight = 0;
         let weekdayCount = 0;
         let weekendCount = 0;
 
         sortedDates.forEach(date => {
             const dateObj = new Date(date);
             const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-            total += value[date] || 0;
+            const demand = value[date];
+            totalDay += demand?.day || 0;
+            totalNight += demand?.night || 0;
             if (isWeekend) weekendCount++;
             else weekdayCount++;
         });
+
+        const total = totalDay + totalNight;
 
         return {
             dates: sortedDates,
             holidays: holidayDates,
             stats: {
+                totalDay,
+                totalNight,
                 total,
                 average: sortedDates.length > 0 ? (total / sortedDates.length).toFixed(1) : 0,
                 weekdays: weekdayCount,
@@ -70,7 +78,7 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
         }
 
         // W przeciwnym razie, wygeneruj nowy kalendarz
-        const newDemand: Record<string, number> = {};
+        const newDemand: Record<string, DemandSpec> = {};
         const year = start.getFullYear();
         const month = start.getMonth() + 1;
         const holidayList = getHolidays(year, month);
@@ -82,8 +90,11 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
             const isWeekend = current.getDay() === 0 || current.getDay() === 6;
             const isHoliday = holidayDates.has(dateStr);
 
-            // Domyślnie: 2 w dni robocze, 1 w weekendy/święta
-            newDemand[dateStr] = value[dateStr] ?? (isWeekend || isHoliday ? 2 : 3);
+            // Domyślnie: dni robocze (3, 1), weekendy/święta (2, 1)
+            newDemand[dateStr] = value[dateStr] ?? {
+                day: isWeekend || isHoliday ? 2 : 3,
+                night: 1
+            };
 
             current.setDate(current.getDate() + 1);
         }
@@ -91,36 +102,52 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
         onChange(newDemand);
     }, [dateRange.start, dateRange.end]); // Usunięto 'value' i 'onChange' z zależności, aby uniknąć pętli
 
-    // Optymalizowana funkcja aktualizacji
-    const updateDemand = useCallback((date: string, val: number) => {
-        onChange({ ...value, [date]: Math.max(0, Math.min(10, val)) });
+    // Optymalizowane funkcje aktualizacji
+    const updateDayDemand = useCallback((date: string, val: number) => {
+        onChange({
+            ...value,
+            [date]: {
+                day: Math.max(0, Math.min(10, val)),
+                night: value[date]?.night || 0
+            }
+        });
+    }, [value, onChange]);
+
+    const updateNightDemand = useCallback((date: string, val: number) => {
+        onChange({
+            ...value,
+            [date]: {
+                day: value[date]?.day || 0,
+                night: Math.max(0, Math.min(10, val))
+            }
+        });
     }, [value, onChange]);
 
     // Bulk operations
-    const fillWeekdays = useCallback((val: number) => {
+    const fillWeekdays = useCallback((dayVal: number, nightVal: number) => {
         const updated = { ...value };
         dates.forEach(date => {
             const dateObj = new Date(date);
             const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-            if (!isWeekend) updated[date] = val;
+            if (!isWeekend) updated[date] = { day: dayVal, night: nightVal };
         });
         onChange(updated);
     }, [dates, value, onChange]);
 
-    const fillWeekends = useCallback((val: number) => {
+    const fillWeekends = useCallback((dayVal: number, nightVal: number) => {
         const updated = { ...value };
         dates.forEach(date => {
             const dateObj = new Date(date);
             const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-            if (isWeekend) updated[date] = val;
+            if (isWeekend) updated[date] = { day: dayVal, night: nightVal };
         });
         onChange(updated);
     }, [dates, value, onChange]);
 
-    const fillAll = useCallback((val: number) => {
+    const fillAll = useCallback((dayVal: number, nightVal: number) => {
         const updated = { ...value };
         dates.forEach(date => {
-            updated[date] = val;
+            updated[date] = { day: dayVal, night: nightVal };
         });
         onChange(updated);
     }, [dates, value, onChange]);
@@ -131,33 +158,34 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
 
         const updated = { ...value };
         const firstWeek = dates.slice(0, 7);
-        const pattern = firstWeek.map(date => value[date] || 0);
+        const pattern = firstWeek.map(date => value[date] || { day: 0, night: 0 });
 
         for (let i = 7; i < dates.length; i++) {
             const patternIndex = i % 7;
-            updated[dates[i]] = pattern[patternIndex];
+            updated[dates[i]] = { ...pattern[patternIndex] };
         }
         onChange(updated);
     }, [dates, value, onChange]);
 
     // Obsługa klawiatury
-    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, date: string, index: number) => {
-        const currentValue = value[date] || 0;
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, date: string, index: number, type: 'day' | 'night') => {
+        const currentValue = type === 'day' ? (value[date]?.day || 0) : (value[date]?.night || 0);
+        const updateFn = type === 'day' ? updateDayDemand : updateNightDemand;
 
         if (e.key === 'ArrowUp') {
             e.preventDefault();
-            updateDemand(date, currentValue + 1);
+            updateFn(date, currentValue + 1);
         } else if (e.key === 'ArrowDown') {
             e.preventDefault();
-            updateDemand(date, currentValue - 1);
+            updateFn(date, currentValue - 1);
         } else if (e.key === 'ArrowLeft' && index > 0) {
             e.preventDefault();
-            document.getElementById(`demand-input-${index - 1}`)?.focus();
+            document.getElementById(`demand-${type}-input-${index - 1}`)?.focus();
         } else if (e.key === 'ArrowRight' && index < dates.length - 1) {
             e.preventDefault();
-            document.getElementById(`demand-input-${index + 1}`)?.focus();
+            document.getElementById(`demand-${type}-input-${index + 1}`)?.focus();
         }
-    }, [value, updateDemand, dates.length]);
+    }, [value, updateDayDemand, updateNightDemand, dates.length]);
 
     if (dates.length === 0) {
         return (
@@ -174,7 +202,9 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
                 <div className="flex flex-wrap gap-4 text-sm">
                     <div>
                         <span className="text-gray-600 dark:text-gray-400">Łączne zapotrzebowanie: </span>
-                        <span className="font-semibold text-gray-900 dark:text-white">{stats.total} osób</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                            {stats.total} osób (☀️ {stats.totalDay} + 🌙 {stats.totalNight})
+                        </span>
                     </div>
                     <div>
                         <span className="text-gray-600 dark:text-gray-400">Średnia dzienna: </span>
@@ -190,25 +220,25 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
 
                 <div className="flex flex-wrap gap-2">
                     <button
-                        onClick={() => fillWeekdays(3)}
+                        onClick={() => fillWeekdays(2, 1)}
                         className="px-3 py-1.5 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
                     >
-                        Dni robocze → 3
+                        Dni robocze → ☀️2 🌙1
                     </button>
                     <button
-                        onClick={() => fillWeekends(2)}
+                        onClick={() => fillWeekends(1, 1)}
                         className="px-3 py-1.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                     >
-                        Weekendy → 2
+                        Weekendy → ☀️1 🌙1
                     </button>
                     <button
-                        onClick={() => fillWeekends(0)}
+                        onClick={() => fillWeekends(0, 0)}
                         className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                         Weekendy → 0
                     </button>
                     <button
-                        onClick={() => fillAll(0)}
+                        onClick={() => fillAll(0, 0)}
                         className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                     >
                         Wyczyść wszystko
@@ -233,8 +263,9 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
                     const monthName = dateObj.toLocaleDateString('pl-PL', { month: 'short' });
                     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
                     const isHoliday = holidays.has(date);
-                    const currentValue = value[date] || 0;
-                    const hasWarning = currentValue === 0;
+                    const currentDay = value[date]?.day || 0;
+                    const currentNight = value[date]?.night || 0;
+                    const hasWarning = currentDay === 0 && currentNight === 0;
 
                     return (
                         <div
@@ -244,7 +275,7 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
                                 : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-gray-600'
                                 } ${hasWarning ? 'ring-2 ring-yellow-400 dark:ring-yellow-600' : ''}`}
                         >
-                            <div className="flex justify-between items-start mb-1">
+                            <div className="flex justify-between items-start mb-2">
                                 <div className="text-xs text-gray-600 dark:text-gray-400">
                                     {dayName} {dayNum} {monthName}
                                 </div>
@@ -255,36 +286,77 @@ export default function DemandCalendar({ dateRange, value, onChange }: DemandCal
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => updateDemand(date, currentValue - 1)}
-                                    className="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors text-gray-700 dark:text-gray-200 font-bold"
-                                    aria-label="Zmniejsz"
-                                >
-                                    -
-                                </button>
-                                <input
-                                    id={`demand-input-${index}`}
-                                    type="number"
-                                    min="0"
-                                    max="10"
-                                    value={currentValue}
-                                    onChange={(e) => updateDemand(date, parseInt(e.target.value) || 0)}
-                                    onKeyDown={(e) => handleKeyDown(e, date, index)}
-                                    className="flex-1 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                                    aria-label={`Zapotrzebowanie na ${dayName} ${dayNum} ${monthName}`}
-                                />
-                                <button
-                                    onClick={() => updateDemand(date, currentValue + 1)}
-                                    className="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors text-gray-700 dark:text-gray-200 font-bold"
-                                    aria-label="Zwiększ"
-                                >
-                                    +
-                                </button>
+                            {/* Day shift input */}
+                            <div className="mb-2">
+                                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    ☀️ Dzień
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => updateDayDemand(date, currentDay - 1)}
+                                        className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors text-gray-700 dark:text-gray-200 text-xs font-bold"
+                                        aria-label="Zmniejsz dzień"
+                                    >
+                                        -
+                                    </button>
+                                    <input
+                                        id={`demand-day-input-${index}`}
+                                        type="number"
+                                        min="0"
+                                        max="10"
+                                        value={currentDay}
+                                        onChange={(e) => updateDayDemand(date, parseInt(e.target.value) || 0)}
+                                        onKeyDown={(e) => handleKeyDown(e, date, index, 'day')}
+                                        className="flex-1 px-1 py-0.5 text-center text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                        aria-label={`Dzień ${dayName} ${dayNum} ${monthName}`}
+                                    />
+                                    <button
+                                        onClick={() => updateDayDemand(date, currentDay + 1)}
+                                        className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors text-gray-700 dark:text-gray-200 text-xs font-bold"
+                                        aria-label="Zwiększ dzień"
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
-                                {currentValue === 1 ? '1 osoba' : `${currentValue} osób`}
+                            {/* Night shift input */}
+                            <div>
+                                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    🌙 Noc
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => updateNightDemand(date, currentNight - 1)}
+                                        className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors text-gray-700 dark:text-gray-200 text-xs font-bold"
+                                        aria-label="Zmniejsz noc"
+                                    >
+                                        -
+                                    </button>
+                                    <input
+                                        id={`demand-night-input-${index}`}
+                                        type="number"
+                                        min="0"
+                                        max="10"
+                                        value={currentNight}
+                                        onChange={(e) => updateNightDemand(date, parseInt(e.target.value) || 0)}
+                                        onKeyDown={(e) => handleKeyDown(e, date, index, 'night')}
+                                        className="flex-1 px-1 py-0.5 text-center text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                        aria-label={`Noc ${dayName} ${dayNum} ${monthName}`}
+                                    />
+                                    <button
+                                        onClick={() => updateNightDemand(date, currentNight + 1)}
+                                        className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-slate-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors text-gray-700 dark:text-gray-200 text-xs font-bold"
+                                        aria-label="Zwiększ noc"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Total summary */}
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                                Razem: {currentDay + currentNight} {currentDay + currentNight === 1 ? 'osoba' : 'osób'}
                             </div>
 
                             {hasWarning && (

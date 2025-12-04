@@ -8,6 +8,10 @@ from typing import Dict, List
 from datetime import datetime, timedelta
 import calendar
 import sys
+from role_constraints import (
+    add_role_based_shift_restrictions,
+    add_leader_support_constraint
+)
 
 def add_all_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput, history_shifts: Dict[str, ShiftType]):
     """
@@ -47,7 +51,11 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     add_max_consecutive_days(model, shifts, input_data)
     
     # 7. Maria Pankowska special rules
-    add_maria_rules(model, shifts, input_data)
+    #add_maria_rules(model, shifts, input_data)
+    
+    # 🆕 Phase 2: Role-based constraints (replaces add_maria_rules)
+    add_role_based_shift_restrictions(model, shifts, input_data)
+    add_leader_support_constraint(model, shifts, input_data)
     
     # 8. Absences (L4, UW from existing schedule + user constraints)
     add_absence_constraints(model, shifts, input_data)
@@ -66,6 +74,9 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     
     # --- 3. NOWOŚĆ: Wsparcie lidera (Lider nie może być sam) ---
     add_leader_support_rule(model, shifts, input_data)
+
+    # --- 4. NOWOŚĆ: Minimum jeden wolny weekend w miesiącu ---
+    add_min_one_free_weekend(model, shifts, input_data)
     
     print("Hard constraints added successfully")
 
@@ -235,41 +246,43 @@ def add_max_consecutive_days(model: cp_model.CpModel, shifts: Dict, input_data: 
             if days_working:
                 model.Add(sum(days_working) <= 5)
 
-def add_maria_rules(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
-    """
-    Special rules for Maria Pankowska (leader):
-    - NO weekends
-    - NO before 8:00
-    - NO after 20:00
-    - NO night shifts
-    """
-    maria = next((e for e in input_data.employees if e.is_maria_pankowska()), None)
-    if not maria or maria.id not in shifts:
-        return
+#def add_maria_rules(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
+#"""
+#Special rules for Maria Pankowska (leader):
+#- NO weekends
+#- NO before 8:00
+#- NO after 20:00
+#- NO night shifts
+#"""
+#maria = next((e for e in input_data.employees if e.is_maria_pankowska()), None)
+#if not maria or maria.id not in shifts:
+    #return
+
+#for date_str in input_data.get_date_list():
+    #date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+    #is_weekend = date_obj.weekday() >= 5  # Saturday=5, Sunday=6
     
-    for date_str in input_data.get_date_list():
-        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-        is_weekend = date_obj.weekday() >= 5  # Saturday=5, Sunday=6
+    #if date_str not in shifts[maria.id]:
+        #continue
+    
+#    for shift_type in maria.allowed_shifts:
+    #    shift_var = shifts[maria.id][date_str].get(shift_type.id)
+    #    if shift_var is None:
+    #        continue
         
-        if date_str not in shifts[maria.id]:
-            continue
+        # NO weekends
+#        if is_weekend:
+#            model.Add(shift_var == 0)
         
-        for shift_type in maria.allowed_shifts:
-            shift_var = shifts[maria.id][date_str].get(shift_type.id)
-            if shift_var is None:
-                continue
-            
-            # NO weekends
-            if is_weekend:
-                model.Add(shift_var == 0)
-            
-            # NO before 8:00
-            if shift_type.start_hour < 8:
-                model.Add(shift_var == 0)
-            
-            # NO after 20:00
-            if shift_type.end_hour > 20 or shift_type.is_night:
-                model.Add(shift_var == 0)
+        # NO before 8:00
+#        if shift_type.start_hour < 8:
+#            model.Add(shift_var == 0)
+        
+        # NO after 20:00
+#        if shift_type.end_hour > 20 or shift_type.is_night:
+#            model.Add(shift_var == 0)
+
+# 🗑️ Removed: add_maria_rules (replaced by role-based constraints in role_constraints.py)
 
 def add_absence_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
     """
@@ -309,28 +322,61 @@ def add_absence_constraints(model: cp_model.CpModel, shifts: Dict, input_data: S
 
 def add_demand_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
     """
-    Minimum staffing requirements per day
+    Minimum staffing requirements per day, split by shift type (day/night)
+    Day shifts: start_hour < 20
+    Night shifts: start_hour >= 20
     """
-    for date_str, min_staff in input_data.demand.items():
-        if min_staff <= 0:
-            continue
+    for date_str, demand_spec in input_data.demand.items():
+        min_day = demand_spec.day
+        min_night = demand_spec.night
         
-        # Count total employees working on this day
-        employees_working = []
-        for emp in input_data.employees:
-            if emp.id not in shifts or date_str not in shifts[emp.id]:
-                continue
+        # Track day shift workers (shifts starting before 20:00)
+        if min_day > 0:
+            day_workers = []
+            for emp in input_data.employees:
+                if emp.id not in shifts or date_str not in shifts[emp.id]:
+                    continue
+                
+                # Sum only shifts that start before 20:00
+                day_shift_vars = []
+                for shift_type in emp.allowed_shifts:
+                    if shift_type.start_hour < 20:  # Day shift
+                        shift_var = shifts[emp.id][date_str].get(shift_type.id)
+                        if shift_var is not None:
+                            day_shift_vars.append(shift_var)
+                
+                if day_shift_vars:
+                    is_working_day = model.NewBoolVar(f'{emp.id}_{date_str}_day_demand')
+                    model.Add(sum(day_shift_vars) >= 1).OnlyEnforceIf(is_working_day)
+                    model.Add(sum(day_shift_vars) == 0).OnlyEnforceIf(is_working_day.Not())
+                    day_workers.append(is_working_day)
             
-            day_shifts = list(shifts[emp.id][date_str].values())
-            if day_shifts:
-                is_working = model.NewBoolVar(f'{emp.id}_{date_str}_demand_check')
-                model.Add(sum(day_shifts) >= 1).OnlyEnforceIf(is_working)
-                model.Add(sum(day_shifts) == 0).OnlyEnforceIf(is_working.Not())
-                employees_working.append(is_working)
+            if day_workers:
+                model.Add(sum(day_workers) >= min_day)
         
-        # At least min_staff employees must work
-        if employees_working:
-            model.Add(sum(employees_working) >= min_staff)
+        # Track night shift workers (shifts starting at or after 20:00)
+        if min_night > 0:
+            night_workers = []
+            for emp in input_data.employees:
+                if emp.id not in shifts or date_str not in shifts[emp.id]:
+                    continue
+                
+                # Sum only shifts that start at or after 20:00
+                night_shift_vars = []
+                for shift_type in emp.allowed_shifts:
+                    if shift_type.start_hour >= 20:  # Night shift
+                        shift_var = shifts[emp.id][date_str].get(shift_type.id)
+                        if shift_var is not None:
+                            night_shift_vars.append(shift_var)
+                
+                if night_shift_vars:
+                    is_working_night = model.NewBoolVar(f'{emp.id}_{date_str}_night_demand')
+                    model.Add(sum(night_shift_vars) >= 1).OnlyEnforceIf(is_working_night)
+                    model.Add(sum(night_shift_vars) == 0).OnlyEnforceIf(is_working_night.Not())
+                    night_workers.append(is_working_night)
+            
+            if night_workers:
+                model.Add(sum(night_workers) >= min_night)
 
 def add_soft_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput) -> List:
     """
@@ -437,31 +483,124 @@ def add_weekend_fairness_objective(model: cp_model.CpModel, shifts: Dict, input_
     if len(weekend_counts) < 2:
         return None
     
-    # Minimize difference
-    max_weekends = model.NewIntVar(0, 100, 'max_weekends')
-    min_weekends = model.NewIntVar(0, 100, 'min_weekends')
-    model.AddMaxEquality(max_weekends, weekend_counts)
-    model.AddMinEquality(min_weekends, weekend_counts)
+    # Minimize sum of squares (quadratic penalty)
+    # This penalizes outliers much more than linear difference
+    # Example: 
+    # 2,2,2 -> 4+4+4 = 12
+    # 0,3,3 -> 0+9+9 = 18 (worse)
     
-    diff = model.NewIntVar(0, 100, 'weekend_diff')
-    model.Add(diff == max_weekends - min_weekends)
+    squares = []
+    for count in weekend_counts:
+        sq = model.NewIntVar(0, 10000, 'weekend_sq')
+        model.AddMultiplicationEquality(sq, [count, count])
+        squares.append(sq)
+        
+    return sum(squares)
+
+def add_min_one_free_weekend(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
+    """
+    HARD CONSTRAINT:
+    Ensure each employee has at least one full weekend off (Sat+Sun) in the schedule.
+    Only applies if the schedule covers at least one full weekend.
+    """
+    print("Adding min one free weekend constraint...", file=sys.stderr)
     
-    return diff
+    # 1. Identify weekends (Saturday dates)
+    weekend_starts = []
+    dates = input_data.get_date_list()
+    
+    for i, date_str in enumerate(dates):
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+        # If it's Saturday and next day (Sunday) is also in range
+        if date_obj.weekday() == 5 and i + 1 < len(dates):
+            weekend_starts.append(date_str)
+            
+    if not weekend_starts:
+        return
+
+    # 2. For each employee, ensure at least one weekend is fully free
+    for emp in input_data.employees:
+        if emp.id not in shifts:
+            continue
+            
+        weekend_worked_vars = []
+        
+        for sat_date in weekend_starts:
+            sat_obj = datetime.strptime(sat_date, '%Y-%m-%d')
+            sun_obj = sat_obj + timedelta(days=1)
+            sun_date = sun_obj.strftime('%Y-%m-%d')
+            
+            # Check if working on Sat OR Sun
+            # We create a bool var: is_working_weekend
+            is_working_weekend = model.NewBoolVar(f'{emp.id}_weekend_{sat_date}')
+            
+            day_shifts_sat = list(shifts[emp.id][sat_date].values())
+            day_shifts_sun = list(shifts[emp.id][sun_date].values())
+            
+            # If working any shift on Sat OR Sun => is_working_weekend = 1
+            # sum(shifts) >= 1  <==> is_working_weekend
+            all_weekend_shifts = day_shifts_sat + day_shifts_sun
+            if all_weekend_shifts:
+                model.Add(sum(all_weekend_shifts) >= 1).OnlyEnforceIf(is_working_weekend)
+                model.Add(sum(all_weekend_shifts) == 0).OnlyEnforceIf(is_working_weekend.Not())
+                weekend_worked_vars.append(is_working_weekend)
+        
+        if weekend_worked_vars:
+            # Must have at least one free weekend
+            # Sum of worked weekends <= Total weekends - 1
+            # OR: Sum of free weekends >= 1
+            # Let's use: Number of worked weekends < Total weekends
+            
+            # Note: If someone takes L4 for a month, this might be impossible if we count L4 as "work" (usually we don't)
+            # But here shifts[] only contains working shifts (not absences), so L4 is naturally "free" from work.
+            
+            model.Add(sum(weekend_worked_vars) < len(weekend_worked_vars))
 
 def add_preference_objective(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
-    """Handle soft employee preferences"""
+    """Handle soft employee preferences (PREFERENCE and FREE_TIME)"""
     penalties = []
     
     for constraint in input_data.constraints:
-        if constraint.type != "PREFERENCE" or constraint.is_hard:
+        if constraint.is_hard:
+            continue
+            
+        if constraint.type not in ["PREFERENCE", "FREE_TIME"]:
             continue
         
         emp_id = constraint.employee_id
         if not emp_id or emp_id not in shifts:
             continue
+            
+        target_dates = []
         
-        # Example: "prefer_nights" preference
-        # This is simplified - you can extend based on constraint.value
+        # Handle single date PREFERENCE
+        if constraint.type == "PREFERENCE" and constraint.date:
+            target_dates.append(constraint.date)
+            
+        # Handle date range FREE_TIME
+        elif constraint.type == "FREE_TIME" and constraint.date_range:
+            start_date = datetime.strptime(constraint.date_range[0], '%Y-%m-%d')
+            end_date = datetime.strptime(constraint.date_range[1], '%Y-%m-%d')
+            
+            current = start_date
+            while current <= end_date:
+                target_dates.append(current.strftime('%Y-%m-%d'))
+                current += timedelta(days=1)
+        
+        # Apply penalties for working on these dates
+        for date_str in target_dates:
+            if date_str in shifts[emp_id]:
+                # Check if any shift is assigned on this day
+                day_shifts = list(shifts[emp_id][date_str].values())
+                if day_shifts:
+                    # Create a boolean variable: is_working_on_preferred_off_day
+                    is_working = model.NewBoolVar(f'{emp_id}_{date_str}_pref_violation')
+                    model.Add(sum(day_shifts) >= 1).OnlyEnforceIf(is_working)
+                    model.Add(sum(day_shifts) == 0).OnlyEnforceIf(is_working.Not())
+                    
+                    # Add penalty (e.g. 100 points per violation)
+                    # You can adjust weight based on constraint.value or importance
+                    penalties.append(is_working * 300)
         
     return sum(penalties) if penalties else None
 

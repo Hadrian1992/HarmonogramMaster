@@ -45,6 +45,7 @@ class Employee:
     """Pracownik"""
     id: str
     name: str
+    roles: List[str] = field(default_factory=list)  # 🆕 Phase 2: Role list
     allowed_shifts: List[ShiftType] = field(default_factory=list)
     preferences: Dict[str, Any] = field(default_factory=dict)
     special_rules: Dict[str, Any] = field(default_factory=dict)
@@ -52,6 +53,10 @@ class Employee:
     def is_maria_pankowska(self) -> bool:
         """Check if this is the leader (Maria Pankowska)"""
         return "Maria Pankowska" in self.name
+    
+    def has_role(self, role: str) -> bool:
+        """Check if employee has specific role"""
+        return role in self.roles
 
 @dataclass
 class Constraint:
@@ -65,15 +70,38 @@ class Constraint:
     is_hard: bool = True  # Hard constraint (MUST) or soft (PREFER)
 
 @dataclass
+class DemandSpec:
+    """Zapotrzebowanie na personel z podziałem na dzień i noc"""
+    day: int = 0     # Zmiany rozpoczynające się przed 20:00
+    night: int = 0   # Zmiany rozpoczynające się od 20:00
+
+@dataclass
 class SolverInput:
     """Input do solvera"""
     employees: List[Employee]
     constraints: List[Constraint]
     date_range: tuple  # (start_date_str, end_date_str)
-    demand: Dict[str, int]  # date -> min_staff
+    demand: Dict[str, Any]  # date -> DemandSpec (or int for backward compat)
     # Zakładamy strukturę existing_schedule zgodną z TypeScript: 
     # { employees: [ {id: '1', shifts: {'2026-01-01': {type: '8-16'}}} ] }
     existing_schedule: Dict[str, Any] = field(default_factory=dict)
+    
+    def __post_init__(self):
+        """Normalize demand to DemandSpec format for backward compatibility"""
+        normalized_demand = {}
+        for date, value in self.demand.items():
+            if isinstance(value, dict):
+                # New format: { day: X, night: Y }
+                normalized_demand[date] = DemandSpec(
+                    day=value.get('day', 0),
+                    night=value.get('night', 0)
+                )
+            elif isinstance(value, int):
+                # Old format: single number -> assign to day, night = 0
+                normalized_demand[date] = DemandSpec(day=value, night=0)
+            else:
+                normalized_demand[date] = DemandSpec(day=0, night=0)
+        self.demand = normalized_demand
     
     def get_date_list(self) -> List[str]:
         """Get list of dates in range as YYYY-MM-DD strings"""

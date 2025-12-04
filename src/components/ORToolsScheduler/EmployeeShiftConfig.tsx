@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Employee } from "../../types";
 import type { ORToolsEmployee } from "../../utils/ortoolsService";
-import { Plus, X, Clock, Crown } from 'lucide-react';
+import { Plus, X, Clock } from 'lucide-react';
+import RoleSelector from './RoleSelector';
+import type { EmployeeRole } from '../../types/roles';
 
 interface EmployeeShiftConfigProps {
     employees: Employee[];
@@ -26,9 +28,10 @@ export default function EmployeeShiftConfig({ employees, value, onChange }: Empl
             const initial = employees.map(emp => ({
                 id: emp.id,
                 name: emp.name,
-                allowedShifts: emp.name.includes('Maria Pankowska') ? [...MARIA_SHIFTS] : [...DEFAULT_SHIFTS],
+                roles: emp.roles || ['WYCHOWAWCA'],  // 🆕 Sync roles from Employee
+                allowedShifts: emp.roles?.includes('LIDER') ? [...MARIA_SHIFTS] : [...DEFAULT_SHIFTS],
                 preferences: {},
-                specialRules: emp.name.includes('Maria Pankowska') ? { isLeader: true } : {}
+                specialRules: {}
             }));
             onChange(initial);
             return;
@@ -44,7 +47,8 @@ export default function EmployeeShiftConfig({ employees, value, onChange }: Empl
                 .map(emp => ({
                     id: emp.id,
                     name: emp.name,
-                    allowedShifts: [...DEFAULT_SHIFTS], // Nowi pracownicy dostają domyślne zmiany
+                    roles: emp.roles || ['WYCHOWAWCA'],  // 🆕 Sync roles
+                    allowedShifts: [...DEFAULT_SHIFTS],
                     preferences: {},
                     specialRules: {}
                 }));
@@ -71,6 +75,14 @@ export default function EmployeeShiftConfig({ employees, value, onChange }: Empl
     const updateEmployee = (id: string, shifts: string[]) => {
         const updated = value.map(emp =>
             emp.id === id ? { ...emp, allowedShifts: shifts } : emp
+        );
+        onChange(updated);
+    };
+
+    // 🆕 Phase 2: Update employee roles
+    const updateEmployeeRoles = (id: string, roles: EmployeeRole[]) => {
+        const updated = value.map(emp =>
+            emp.id === id ? { ...emp, roles: roles as string[] } : emp
         );
         onChange(updated);
     };
@@ -117,18 +129,20 @@ export default function EmployeeShiftConfig({ employees, value, onChange }: Empl
                             <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-purple-700 dark:text-purple-300 font-bold text-xs">
                                 {emp.name.substring(0, 2).toUpperCase()}
                             </div>
-                            <div>
-                                <div className="font-medium text-gray-900 dark:text-white text-sm">
-                                    {emp.name}
-                                </div>
-                                {emp.specialRules?.isLeader && (
-                                    <div className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
-                                        <Crown size={10} />
-                                        Lider Zespołu
-                                    </div>
-                                )}
+                            <div className="font-medium text-gray-900 dark:text-white text-sm">
+                                {emp.name}
                             </div>
                         </div>
+                    </div>
+
+                    {/* 🆕 Phase 2: Role Selector */}
+                    <div className="mb-3">
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-medium">Role:</div>
+                        <RoleSelector
+                            employeeId={emp.id}
+                            currentRoles={(emp.roles || []) as EmployeeRole[]}
+                            onChange={(roles) => updateEmployeeRoles(emp.id, roles)}
+                        />
                     </div>
 
                     <div className="flex flex-wrap gap-2 mb-3">

@@ -7,6 +7,7 @@ import EmployeeShiftConfig from './EmployeeShiftConfig';
 import DemandCalendar from './DemandCalendar';
 import RuleEditor from './RuleEditor';
 import ResultViewer from './ResultViewer';
+import type { DemandSpec } from '../../store/useScheduleStore';
 
 export default function ORToolsSchedulerPage() {
     // 1. Pobierz schedule oraz konfigurację OR-Tools ze store'a (który jest zapisywany w localStorage)
@@ -24,7 +25,7 @@ export default function ORToolsSchedulerPage() {
     // Każda zmiana w inputach wywoła te funkcje, które zapiszą dane globalnie.
     const setDateRange = (val: { start: string; end: string }) => updateORToolsConfig({ dateRange: val });
     const setEmployeeConfig = (val: ORToolsEmployee[]) => updateORToolsConfig({ employees: val });
-    const setDemand = (val: Record<string, number>) => updateORToolsConfig({ demand: val });
+    const setDemand = (val: Record<string, DemandSpec>) => updateORToolsConfig({ demand: val });
     const setConstraints = (val: ORToolsConstraint[]) => updateORToolsConfig({ constraints: val });
 
     // 4. Te stany mogą pozostać lokalne, ponieważ wynik generowania/błędy są tymczasowe.

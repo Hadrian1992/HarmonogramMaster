@@ -91,18 +91,18 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                                 <div
                                     key={index}
                                     className={`group flex items-center justify-between p-3 rounded-lg border text-sm transition-all hover:shadow-sm ${isAbsence
-                                            ? 'bg-red-50/50 border-red-100 dark:bg-red-900/10 dark:border-red-900/30'
-                                            : isFreeTime
-                                                ? 'bg-amber-50/50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30'
-                                                : 'bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30'
+                                        ? 'bg-red-50/50 border-red-100 dark:bg-red-900/10 dark:border-red-900/30'
+                                        : isFreeTime
+                                            ? 'bg-amber-50/50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30'
+                                            : 'bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isAbsence
-                                                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                                                : isFreeTime
-                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                            : isFreeTime
+                                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
                                             }`}>
                                             {employeeName.substring(0, 2).toUpperCase()}
                                         </div>
@@ -113,10 +113,10 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                                                     {employeeName}
                                                 </span>
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold tracking-wide ${isAbsence
-                                                        ? 'text-red-600 bg-red-100/50 dark:text-red-400'
-                                                        : isFreeTime
-                                                            ? 'text-amber-600 bg-amber-100/50 dark:text-amber-400'
-                                                            : 'text-blue-600 bg-blue-100/50 dark:text-blue-400'
+                                                    ? 'text-red-600 bg-red-100/50 dark:text-red-400'
+                                                    : isFreeTime
+                                                        ? 'text-amber-600 bg-amber-100/50 dark:text-amber-400'
+                                                        : 'text-blue-600 bg-blue-100/50 dark:text-blue-400'
                                                     }`}>
                                                     {isAbsence ? 'Absencja' : isFreeTime ? 'Wolne' : 'Preferencja'}
                                                 </span>
@@ -176,8 +176,8 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                             <button
                                 onClick={() => setNewRule({ ...newRule, type: 'ABSENCE', isHard: true })}
                                 className={`text-xs font-medium py-1.5 px-2 rounded-md transition-all ${newRule.type === 'ABSENCE'
-                                        ? 'bg-white dark:bg-slate-600 text-red-600 dark:text-red-400 shadow-sm'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                    ? 'bg-white dark:bg-slate-600 text-red-600 dark:text-red-400 shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
                                     }`}
                             >
                                 Absencja
@@ -185,8 +185,8 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                             <button
                                 onClick={() => setNewRule({ ...newRule, type: 'FREE_TIME', isHard: false })}
                                 className={`text-xs font-medium py-1.5 px-2 rounded-md transition-all ${newRule.type === 'FREE_TIME'
-                                        ? 'bg-white dark:bg-slate-600 text-amber-600 dark:text-amber-400 shadow-sm'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                    ? 'bg-white dark:bg-slate-600 text-amber-600 dark:text-amber-400 shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
                                     }`}
                             >
                                 Wolne
@@ -194,8 +194,8 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                             <button
                                 onClick={() => setNewRule({ ...newRule, type: 'PREFERENCE', isHard: false })}
                                 className={`text-xs font-medium py-1.5 px-2 rounded-md transition-all ${newRule.type === 'PREFERENCE'
-                                        ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                    ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
                                     }`}
                             >
                                 Preferencja

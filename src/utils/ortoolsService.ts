@@ -6,6 +6,7 @@
 export interface ORToolsEmployee {
     id: string;
     name: string;
+    roles: string[];  // 🆕 Phase 2: Employee roles
     allowedShifts: string[];  // e.g., ["8-16", "14-22", "20-8"]
     preferences?: Record<string, any>;
     specialRules?: Record<string, any>;
@@ -21,6 +22,11 @@ export interface ORToolsConstraint {
     isHard?: boolean;  // true = ABSENCE, false = PREFERENCE/FREE_TIME
 }
 
+export interface DemandSpec {
+    day: number;   // Shifts starting before 20:00
+    night: number; // Shifts starting at or after 20:00
+}
+
 export interface ORToolsRequest {
     dateRange: {
         start: string;  // YYYY-MM-DD
@@ -28,7 +34,7 @@ export interface ORToolsRequest {
     };
     employees: ORToolsEmployee[];
     constraints: ORToolsConstraint[];
-    demand: Record<string, number>;  // date -> min_staff
+    demand: Record<string, DemandSpec>;  // date -> { day, night }
     existingSchedule: any;  // Current schedule from store
 }
 
