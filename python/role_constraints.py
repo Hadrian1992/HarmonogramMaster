@@ -4,6 +4,7 @@ Phase 2: Replaces hardcoded Maria rules with flexible role system
 """
 
 from typing import Dict, List
+from datetime import datetime  # 🔧 Fix: Added missing import
 from ortools.sat.python import cp_model
 from models import SolverInput, Employee
 
@@ -29,7 +30,7 @@ def add_role_based_shift_restrictions(
         # LIDER role restrictions (replaces Maria hardcoded rules)
         if 'LIDER' in emp.roles:
             for date_str in shifts[emp.id]:
-                date_obj = input_data.parse_date(date_str)
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')  # 🔧 Fix: use datetime directly
                 is_weekend = date_obj.weekday() >= 5
                 
                 for shift_type in emp.allowed_shifts:
