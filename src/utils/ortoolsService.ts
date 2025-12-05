@@ -71,3 +71,74 @@ export async function generateSchedule(request: ORToolsRequest): Promise<ORTools
 
     return response.json();
 }
+
+// ============================================================================
+// 🆕 ASYNC JOB PATTERN - Non-blocking solver execution
+// ============================================================================
+
+export interface JobStatus {
+    jobId: string;
+    status: 'running' | 'completed' | 'failed';
+    progress: string;
+    elapsed: number;
+    completed: boolean;
+}
+
+/**
+ * Start a solver job (returns immediately with job ID)
+ */
+export async function startSolverJob(request: ORToolsRequest): Promise<{ jobId: string; status: string }> {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+    const response = await fetch(`${apiUrl}/api/ortools/start-job`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(request)
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to start solver job');
+    }
+
+    return response.json();
+}
+
+/**
+ * Poll job status (call every 2 seconds)
+ */
+export async function pollJobStatus(jobId: string): Promise<JobStatus> {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+    const response = await fetch(`${apiUrl}/api/ortools/job-status/${jobId}`, {
+        credentials: 'include'
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get job status');
+    }
+
+    return response.json();
+}
+
+/**
+ * Get job result (when status is 'completed')
+ */
+export async function getJobResult(jobId: string): Promise<ORToolsResponse> {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+    const response = await fetch(`${apiUrl}/api/ortools/job-result/${jobId}`, {
+        credentials: 'include'
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get job result');
+    }
+
+    return response.json();
+}

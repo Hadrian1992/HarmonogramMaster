@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useScheduleStore } from '../../store/useScheduleStore';
 import { Calendar, Users, Sparkles, AlertOctagon, CheckCircle2, BarChart3, Settings } from 'lucide-react';
-import { generateSchedule, type ORToolsEmployee, type ORToolsConstraint, type ORToolsResponse } from '../../utils/ortoolsService';
+import { generateSchedule, startSolverJob, pollJobStatus, getJobResult, type ORToolsEmployee, type ORToolsConstraint, type ORToolsResponse } from '../../utils/ortoolsService';
 import DateRangePicker from './DateRangePicker';
 import EmployeeShiftConfig from './EmployeeShiftConfig';
 import DemandCalendar from './DemandCalendar';
@@ -61,28 +61,50 @@ export default function ORToolsSchedulerPage() {
         setResult(null);
 
         try {
-            const response = await generateSchedule({
-                dateRange,
-                employees: employeeConfig,
-                constraints,
-                demand,
-                existingSchedule: schedule
+            console.log('🚀 Starting async solver job...');
+            const { jobId } = await startSolverJob({
+                dateRange, employees: employeeConfig, constraints, demand, existingSchedule: schedule
             });
 
-            setResult(response);
+            const pollInterval = setInterval(async () => {
+                try {
+                    const status = await pollJobStatus(jobId);
+                    setError(`🔄 Generowanie... ${status.elapsed}s\n📊 ${status.progress}`);
 
-            if (response.status !== 'SUCCESS') {
-                setError(response.error || 'Nie znaleziono rozwiązania spełniającego wszystkie kryteria.');
-            } else {
-                // Scroll do wyników po sukcesie
-                setTimeout(() => {
-                    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
-            }
+                    if (status.completed) {
+                        clearInterval(pollInterval);
+                        if (status.status === 'completed') {
+                            const result = await getJobResult(jobId);
+                            setResult(result);
+                            setError(null);
+                            setLoading(false);
+                            if (result.status === 'SUCCESS') {
+                                setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                            } else {
+                                setError(result.error || 'Nie znaleziono rozwiązania.');
+                            }
+                        } else {
+                            const failedResult = await getJobResult(jobId);
+                            setError(failedResult.error || 'Solver failed');
+                            setLoading(false);
+                        }
+                    }
+                } catch (pollError) {
+                    clearInterval(pollInterval);
+                    setError('Błąd: ' + (pollError as Error).message);
+                    setLoading(false);
+                }
+            }, 2000);
+
+            setTimeout(() => {
+                clearInterval(pollInterval);
+                if (loading) {
+                    setError('⏱️ Timeout (10 min)');
+                    setLoading(false);
+                }
+            }, 600000);
         } catch (err: any) {
-            console.error('Generation failed:', err);
-            setError(err.message || 'Wystąpił nieoczekiwany błąd podczas komunikacji z algorytmem.');
-        } finally {
+            setError(err.message || 'Błąd komunikacji');
             setLoading(false);
         }
     };

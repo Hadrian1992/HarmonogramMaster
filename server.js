@@ -746,6 +746,224 @@ app.post('/api/ortools/generate-schedule', authenticateCookie, async (req, res) 
     }
 });
 
+// ============================================================================
+// 🆕 ASYNC JOB PATTERN - Solver Jobs Storage
+// ============================================================================
+const crypto = await import('crypto');
+const solverJobs = new Map(); // jobId -> { status, result, error, startTime, progress }
+
+function generateJobId() {
+    return crypto.randomUUID();
+}
+
+function cleanOldJobs() {
+    const MAX_AGE = 1000 * 60 * 60; // 1 hour
+    const now = Date.now();
+    for (const [jobId, job] of solverJobs.entries()) {
+        if (now - job.startTime > MAX_AGE) {
+            solverJobs.delete(jobId);
+        }
+    }
+}
+
+// Clean old jobs every 10 minutes
+setInterval(cleanOldJobs, 1000 * 60 * 10);
+
+// ============================================================================
+// 🆕 ASYNC ENDPOINT 1: Start Solver Job
+// ============================================================================
+app.post('/api/ortools/start-job', authenticateCookie, async (req, res) => {
+    const jobId = generateJobId();
+    const {
+        dateRange,
+        employees,
+        constraints,
+        demand,
+        existingSchedule
+    } = req.body;
+
+    console.log(`🚀 Starting solver job: ${jobId}`);
+    console.log(`   Date range: ${dateRange.start} to ${dateRange.end}`);
+    console.log(`   Employees: ${employees?.length}, Constraints: ${constraints?.length}`);
+
+    // Initialize job status
+    solverJobs.set(jobId, {
+        status: 'running',
+        result: null,
+        error: null,
+        startTime: Date.now(),
+        progress: 'Initializing solver...'
+    });
+
+    // Return job ID immediately
+    res.json({ jobId, status: 'started' });
+
+    // Run solver in background (async, no await!)
+    (async () => {
+        try {
+            // Merge absences
+            const allConstraints = mergeAbsences(existingSchedule, constraints || [], dateRange);
+
+            const solverInput = {
+                employees: employees || [],
+                constraints: allConstraints,
+                dateRange,
+                demand: demand || {},
+                existingSchedule: existingSchedule || {}
+            };
+
+            // Update progress
+            solverJobs.get(jobId).progress = 'Spawning Python solver...';
+
+            const { spawn } = await import('child_process');
+            const isWindows = process.platform === 'win32';
+            const pythonPath = process.env.PYTHON_PATH || path.join(
+                __dirname,
+                'python',
+                'venv',
+                isWindows ? 'Scripts' : 'bin',
+                isWindows ? 'python.exe' : 'python3'
+            );
+            const scriptPath = path.join(__dirname, 'python', 'scheduler_solver.py');
+
+            const python = spawn(pythonPath, [scriptPath], {
+                cwd: path.join(__dirname, 'python')
+            });
+
+            let output = '';
+            let errorOutput = '';
+
+            python.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+
+            python.stderr.on('data', (data) => {
+                const msg = data.toString();
+                errorOutput += msg;
+
+                // Update progress from stderr logs
+                if (msg.includes('Solving...')) {
+                    solverJobs.get(jobId).progress = 'Searching for optimal solution...';
+                } else if (msg.includes('Adding constraints')) {
+                    solverJobs.get(jobId).progress = 'Adding constraints...';
+                }
+            });
+
+            python.stdin.write(JSON.stringify(solverInput));
+            python.stdin.end();
+
+            python.on('close', (code) => {
+                const job = solverJobs.get(jobId);
+                if (!job) return; // Job was cleaned up
+
+                if (code !== 0) {
+                    job.status = 'failed';
+                    job.error = errorOutput || 'Solver failed';
+                    job.progress = 'Failed';
+                    console.error(`❌ Job ${jobId} failed with code ${code}`);
+                    return;
+                }
+
+                try {
+                    const jsonEndIndex = output.lastIndexOf('}');
+                    const statusIndex = output.indexOf('"status"');
+                    let jsonStartIndex = -1;
+
+                    if (statusIndex !== -1) {
+                        jsonStartIndex = output.lastIndexOf('{', statusIndex);
+                    }
+
+                    if (jsonStartIndex === -1) {
+                        jsonStartIndex = output.indexOf('{');
+                    }
+
+                    if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
+                        const jsonString = output.substring(jsonStartIndex, jsonEndIndex + 1);
+                        const result = JSON.parse(jsonString);
+
+                        job.status = 'completed';
+                        job.result = result;
+                        job.progress = 'Complete';
+                        console.log(`✅ Job ${jobId} completed: ${result.status}`);
+                    } else {
+                        throw new Error('No valid JSON found');
+                    }
+                } catch (err) {
+                    job.status = 'failed';
+                    job.error = 'Invalid JSON from solver: ' + err.message;
+                    job.progress = 'Failed to parse result';
+                    console.error(`❌ Job ${jobId} parse error:`, err);
+                }
+            });
+
+        } catch (error) {
+            const job = solverJobs.get(jobId);
+            if (job) {
+                job.status = 'failed';
+                job.error = error.message;
+                job.progress = 'Error: ' + error.message;
+                console.error(`❌ Job ${jobId} error:`, error);
+            }
+        }
+    })();
+});
+
+// ============================================================================
+// 🆕 ASYNC ENDPOINT 2: Check Job Status
+// ============================================================================
+app.get('/api/ortools/job-status/:jobId', authenticateCookie, (req, res) => {
+    const { jobId } = req.params;
+    const job = solverJobs.get(jobId);
+
+    if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+    }
+
+    const elapsed = Math.floor((Date.now() - job.startTime) / 1000);
+
+    res.json({
+        jobId,
+        status: job.status,
+        progress: job.progress,
+        elapsed,
+        completed: job.status === 'completed' || job.status === 'failed'
+    });
+});
+
+// ============================================================================
+// 🆕 ASYNC ENDPOINT 3: Get Job Result
+// ============================================================================
+app.get('/api/ortools/job-result/:jobId', authenticateCookie, (req, res) => {
+    const { jobId } = req.params;
+    const job = solverJobs.get(jobId);
+
+    if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.status === 'running') {
+        return res.status(202).json({
+            message: 'Job still running',
+            progress: job.progress
+        });
+    }
+
+    if (job.status === 'failed') {
+        return res.status(500).json({
+            error: job.error,
+            status: 'FAILED'
+        });
+    }
+
+    // Status === 'completed'
+    res.json(job.result);
+
+    // Optionally clean up job after retrieval
+    // solverJobs.delete(jobId);
+});
+
+// ============================================================================
+
 // OR-Tools Schedule Validator - Checks specific rules and returns violations
 app.post('/api/ortools/validate', authenticateCookie, async (req, res) => {
     console.log('🔍 VALIDATOR ENDPOINT CALLED'); // Debug log
