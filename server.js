@@ -846,6 +846,23 @@ app.post('/api/ortools/start-job', authenticateCookie, async (req, res) => {
                     solverJobs.get(jobId).progress = 'Searching for optimal solution...';
                 } else if (msg.includes('Adding constraints')) {
                     solverJobs.get(jobId).progress = 'Adding constraints...';
+                } else if (msg.includes('Solution #')) {
+                    // 🆕 Parse solution progress: "Solution #5: score=780, time=142.8s"
+                    const match = msg.match(/Solution #(\d+): score=(\d+), time=([\d.]+)s/);
+                    if (match) {
+                        const [_, solutionNum, score, time] = match;
+                        solverJobs.get(jobId).progress = `🔍 Solution #${solutionNum} found | Score: ${score} | Time: ${time}s`;
+                    }
+                } else if (msg.includes('Early stop!')) {
+                    // 🆕 Parse early stop message
+                    if (msg.includes('Score')) {
+                        const match = msg.match(/score.*?(\d+)/i);
+                        if (match) {
+                            solverJobs.get(jobId).progress = `🎯 Early stop! Final score: ${match[1]}`;
+                        }
+                    } else {
+                        solverJobs.get(jobId).progress = '⏱️ Early stop (no improvement)';
+                    }
                 }
             });
 

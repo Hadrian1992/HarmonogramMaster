@@ -11,6 +11,21 @@ from constraints import add_all_constraints
 from datetime import datetime, timedelta
 from typing import Dict, List
 
+# ============================================================================
+# 🎯 EARLY STOP CONFIGURATION - Dostosuj te wartości!
+# ============================================================================
+EARLY_STOP_ENABLED = True          # True = włączone, False = wyłączone
+EARLY_STOP_SCORE_THRESHOLD = 600   # Zatrzymaj gdy score < 600
+EARLY_STOP_MIN_SOLUTIONS = 10       # Znajdź minimum 5 rozwiązań przed early stop
+EARLY_STOP_NO_IMPROVEMENT_SEC = 600  # Zatrzymaj jeśli brak poprawy przez 5 minut
+
+# Proponowane wartości dla różnych okresów:
+# 7-14 dni:  THRESHOLD = 500,  MIN_SOLUTIONS = 3
+# 14-21 dni: THRESHOLD = 700,  MIN_SOLUTIONS = 4  
+# 21-28 dni: THRESHOLD = 800,  MIN_SOLUTIONS = 5
+# 28+ dni:   THRESHOLD = 1000, MIN_SOLUTIONS = 6
+# ============================================================================
+
 def parse_input(input_json: dict) -> SolverInput:
     """Parse JSON input into SolverInput object"""
     # Parse employees
@@ -129,20 +144,71 @@ def solve_schedule(input_data: SolverInput) -> SolverOutput:
 
     # Add constraints
     print("Adding constraints...", file=sys.stderr)
-    # --- ZMIANA: PRZEKAZANIE HISTORII ---
-    # Zakładamy, że add_all_constraints w constraints.py przyjmuje teraz dodatkowy argument
-    # Jeśli funkcja add_all_constraints nie obsługuje jeszcze tego argumentu, 
-    # będziesz musiał zaktualizować również plik constraints.py
     add_all_constraints(model, shifts, input_data, history_shifts)
     # ------------------------------------
+    
+    # ========================================================================
+    # 🎯 EARLY STOP CALLBACK
+    # ========================================================================
+    class SolutionCallback(cp_model.CpSolverSolutionCallback):
+        """Callback to monitor solutions and stop early if conditions are met"""
+        def __init__(self):
+            cp_model.CpSolverSolutionCallback.__init__(self)
+            self.solution_count = 0
+            self.best_score = float('inf')
+            self.last_improvement_time = 0
+            self.start_time = None
+            
+        def on_solution_callback(self):
+            if self.start_time is None:
+                self.start_time = self.WallTime()
+                
+            self.solution_count += 1
+            current_score = self.ObjectiveValue()
+            current_time = self.WallTime()
+            
+            # Log progress
+            print(f"Solution #{self.solution_count}: score={current_score}, time={current_time:.1f}s", file=sys.stderr)
+            
+            if not EARLY_STOP_ENABLED:
+                self.best_score = current_score
+                return
+            
+            # Check if score improved
+            if current_score < self.best_score:
+                self.best_score = current_score
+                self.last_improvement_time = current_time
+            
+            # EARLY STOP CONDITION 1: Score threshold reached
+            if current_score < EARLY_STOP_SCORE_THRESHOLD and self.solution_count >= EARLY_STOP_MIN_SOLUTIONS:
+                print(f"🎯 Early stop! Score {current_score} < {EARLY_STOP_SCORE_THRESHOLD} (after {self.solution_count} solutions)", file=sys.stderr)
+                self.StopSearch()
+                return
+            
+            # EARLY STOP CONDITION 2: No improvement for X seconds
+            time_since_improvement = current_time - self.last_improvement_time
+            if time_since_improvement > EARLY_STOP_NO_IMPROVEMENT_SEC and self.solution_count >= EARLY_STOP_MIN_SOLUTIONS:
+                print(f"⏱️ Early stop! No improvement for {time_since_improvement:.0f}s (best: {self.best_score})", file=sys.stderr)
+                self.StopSearch()
+                return
+    
+    # ========================================================================
     
     # Solve
     print("Solving...", file=sys.stderr)
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 1200.0  # 20 minutes timeout
+    solver.parameters.max_time_in_seconds = 1800.0  # 30 minutes timeout
     solver.parameters.log_search_progress = False
     
-    status = solver.Solve(model)
+    # Use callback if early stop enabled
+    if EARLY_STOP_ENABLED:
+        callback = SolutionCallback()
+        print(f"Early stop: ENABLED (threshold={EARLY_STOP_SCORE_THRESHOLD}, min_solutions={EARLY_STOP_MIN_SOLUTIONS})", file=sys.stderr)
+        status = solver.Solve(model, callback)
+    else:
+        print("Early stop: DISABLED", file=sys.stderr)
+        status = solver.Solve(model)
+
     
     # Extract solution
     if status == cp_model.OPTIMAL:
