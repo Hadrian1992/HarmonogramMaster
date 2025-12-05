@@ -20,6 +20,11 @@ export interface ORToolsConstraint {
     value?: any;
     description?: string;
     isHard?: boolean;  // true = ABSENCE, false = PREFERENCE/FREE_TIME
+
+    // 🆕 Advanced shift preferences (PREFERENCE only)
+    preferredShifts?: string[];  // ["8-14", "8-16"] - preferowane zmiany
+    avoidShifts?: string[];      // ["14-22", "20-8"] - unikane zmiany
+    weight?: number;             // 30 (Niski), 60 (Średni), 100 (Wysoki)
 }
 
 export interface DemandSpec {

@@ -10,6 +10,9 @@ interface RuleEditorProps {
     onChange: (value: ORToolsConstraint[]) => void;
 }
 
+// Dostępne zmiany (można rozszerzyć)
+const AVAILABLE_SHIFTS = ['8-14', '8-16', '10-20', '14-22', '20-8'];
+
 export default function RuleEditor({ employees, value, onChange }: RuleEditorProps) {
     const [error, setError] = useState<string | null>(null);
     const [newRule, setNewRule] = useState<Partial<ORToolsConstraint>>({
@@ -17,8 +20,12 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
         isHard: true,
         dateRange: ['', ''],
         date: '',
-        description: ''
+        description: '',
+        weight: 60  // 🆕 Default: Średni
     });
+
+    // 🆕 Advanced preference state
+    const [prefMode, setPrefMode] = useState<'simple' | 'advanced'>('simple');
 
     const resetForm = () => {
         setNewRule({
@@ -27,8 +34,12 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
             dateRange: ['', ''],
             description: '',
             employeeId: '',
-            date: ''
+            date: '',
+            weight: 60,  // 🆕 Reset to default
+            preferredShifts: undefined,
+            avoidShifts: undefined
         });
+        setPrefMode('simple');  // 🆕 Reset mode
         setError(null);
     };
 
@@ -122,13 +133,39 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                                                 </span>
                                             </div>
 
-                                            <div className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1.5 mt-0.5 truncate">
-                                                <span>📅 {rule.dateRange ? `${rule.dateRange[0]} ➝ ${rule.dateRange[1]}` : rule.date}</span>
-                                                {rule.description && (
-                                                    <>
-                                                        <span>•</span>
-                                                        <span className="italic truncate max-w-[150px]">{rule.description}</span>
-                                                    </>
+                                            <div className="text-gray-500 dark:text-gray-400 text-xs flex flex-col gap-0.5 mt-0.5">
+                                                <div className="flex items-center gap-1.5 truncate">
+                                                    <span>📅 {rule.dateRange ? `${rule.dateRange[0]} ➝ ${rule.dateRange[1]}` : rule.date}</span>
+                                                    {rule.description && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="italic truncate max-w-[150px]">{rule.description}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                {/* 🆕 Advanced preference details */}
+                                                {rule.type === 'PREFERENCE' && (rule.preferredShifts || rule.avoidShifts) && (
+                                                    <div className="flex items-center gap-1.5 flex-wrap text-[10px] mt-1">
+                                                        {rule.preferredShifts && rule.preferredShifts.length > 0 && (
+                                                            <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
+                                                                ✅ {rule.preferredShifts.join(', ')}
+                                                            </span>
+                                                        )}
+                                                        {rule.avoidShifts && rule.avoidShifts.length > 0 && (
+                                                            <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">
+                                                                ❌ {rule.avoidShifts.join(', ')}
+                                                            </span>
+                                                        )}
+                                                        {rule.weight && (
+                                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${rule.weight === 30 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                                                                    rule.weight === 100 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                                                                        'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                                                                }`}>
+                                                                ⚖️ {rule.weight === 30 ? 'Niska' : rule.weight === 100 ? 'Wysoka' : 'Średnia'}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -233,21 +270,152 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                             />
                         </div>
                     ) : (
-                        <div className="md:col-span-6 grid grid-cols-2 gap-3">
-                            <CustomDatePicker
-                                value={newRule.date || ''}
-                                onChange={(date) => setNewRule({ ...newRule, date })}
-                                label="Data preferencji"
-                            />
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1.5">Szczegóły (opcjonalne)</label>
-                                <input
-                                    type="text"
-                                    placeholder="np. Zmiana poranna, Wolne"
-                                    value={newRule.description || ''}
-                                    onChange={(e) => setNewRule({ ...newRule, description: e.target.value })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none placeholder:text-gray-400"
+                        <div className="md:col-span-12 space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                <CustomDatePicker
+                                    value={newRule.date || ''}
+                                    onChange={(date) => setNewRule({ ...newRule, date })}
+                                    label="Data preferencji"
                                 />
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Szczegóły (opcjonalne)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="np. Odbiór dziecka o 17:00"
+                                        value={newRule.description || ''}
+                                        onChange={(e) => setNewRule({ ...newRule, description: e.target.value })}
+                                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none placeholder:text-gray-400"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* 🆕 Typ preferencji */}
+                            <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-3">
+                                <label className="block text-xs font-medium text-blue-900 dark:text-blue-300 mb-2">Typ preferencji</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPrefMode('simple');
+                                            setNewRule({ ...newRule, preferredShifts: undefined, avoidShifts: undefined });
+                                        }}
+                                        className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${prefMode === 'simple'
+                                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                                            }`}
+                                    >
+                                        🏖️ Wolne tego dnia
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPrefMode('advanced')}
+                                        className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${prefMode === 'advanced'
+                                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                                            }`}
+                                    >
+                                        ⚡ Preferowane zmiany
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 🆕 Zaawansowane preferencje */}
+                            {prefMode === 'advanced' && (
+                                <div className="space-y-3">
+                                    {/* Preferowane zmiany */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-green-700 dark:text-green-400 mb-1.5">✅ Preferowane zmiany (wybierz 1+)</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {AVAILABLE_SHIFTS.map(shift => (
+                                                <label key={shift} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-green-50 dark:hover:bg-green-900/10 p-2 rounded transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={newRule.preferredShifts?.includes(shift) || false}
+                                                        onChange={(e) => {
+                                                            const current = newRule.preferredShifts || [];
+                                                            setNewRule({
+                                                                ...newRule,
+                                                                preferredShifts: e.target.checked
+                                                                    ? [...current, shift]
+                                                                    : current.filter(s => s !== shift)
+                                                            });
+                                                        }}
+                                                        className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                                    />
+                                                    <span className="text-gray-900 dark:text-white">{shift}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Unikane zmiany */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-red-700 dark:text-red-400 mb-1.5">❌ Unikaj zmian (opcjonalne)</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {AVAILABLE_SHIFTS.map(shift => (
+                                                <label key={shift} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/10 p-2 rounded transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={newRule.avoidShifts?.includes(shift) || false}
+                                                        onChange={(e) => {
+                                                            const current = newRule.avoidShifts || [];
+                                                            setNewRule({
+                                                                ...newRule,
+                                                                avoidShifts: e.target.checked
+                                                                    ? [...current, shift]
+                                                                    : current.filter(s => s !== shift)
+                                                            });
+                                                        }}
+                                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                                    />
+                                                    <span className="text-gray-900 dark:text-white">{shift}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 🆕 Waga preferencji */}
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">⚖️ Waga preferencji</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewRule({ ...newRule, weight: 30 })}
+                                        className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${newRule.weight === 30
+                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-2 border-green-500'
+                                            : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
+                                            }`}
+                                    >
+                                        🟢 Niski (30)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewRule({ ...newRule, weight: 60 })}
+                                        className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${newRule.weight === 60
+                                            ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-2 border-yellow-500'
+                                            : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
+                                            }`}
+                                    >
+                                        🟡 Średni (60)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewRule({ ...newRule, weight: 100 })}
+                                        className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${newRule.weight === 100
+                                            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-2 border-red-500'
+                                            : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
+                                            }`}
+                                    >
+                                        🔴 Wysoki (100)
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                                    {newRule.weight === 30 && 'Solver może łatwo złamać tę preferencję'}
+                                    {newRule.weight === 60 && 'Standardowy nacisk - dobre dla większości przypadków'}
+                                    {newRule.weight === 100 && 'Solver bardzo stara się nie łamać tej preferencji'}
+                                </p>
                             </div>
                         </div>
                     )}

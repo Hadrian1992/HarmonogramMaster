@@ -68,6 +68,11 @@ class Constraint:
     value: Any = None    # Depends on type
     description: str = ""
     is_hard: bool = True  # Hard constraint (MUST) or soft (PREFER)
+    
+    # 🆕 Advanced shift preferences (PREFERENCE type only)
+    preferred_shifts: Optional[List[str]] = None   # ["8-14", "8-16"] - preferowane zmiany
+    avoid_shifts: Optional[List[str]] = None       # ["14-22", "20-8"] - unikane zmiany
+    weight: int = 60  # Waga: 30 (Niski), 60 (Średni), 100 (Wysoki)
 
 @dataclass
 class DemandSpec:

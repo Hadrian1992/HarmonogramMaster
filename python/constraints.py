@@ -591,10 +591,28 @@ def add_preference_objective(model: cp_model.CpModel, shifts: Dict, input_data: 
                 target_dates.append(current.strftime('%Y-%m-%d'))
                 current += timedelta(days=1)
         
-        # Apply penalties for working on these dates
+        # Apply penalties/bonuses for working on these dates
         for date_str in target_dates:
-            if date_str in shifts[emp_id]:
-                # Check if any shift is assigned on this day
+            if date_str not in shifts[emp_id]:
+                continue
+            
+            # 🆕 ADVANCED: Preferowane/unikane zmiany
+            if constraint.preferred_shifts or constraint.avoid_shifts:
+                # KARA za avoid_shifts
+                for shift_id in (constraint.avoid_shifts or []):
+                    if shift_id in shifts[emp_id][date_str]:
+                        shift_var = shifts[emp_id][date_str][shift_id]
+                        penalties.append(shift_var * constraint.weight)
+                
+                # BONUS za preferred_shifts (połowa wagi)
+                for shift_id in (constraint.preferred_shifts or []):
+                    if shift_id in shifts[emp_id][date_str]:
+                        shift_var = shifts[emp_id][date_str][shift_id]
+                        bonus_weight = constraint.weight // 2  # Połowa wagi jako bonus
+                        penalties.append(shift_var * (-bonus_weight))
+            
+            # STARE: Proste "wolne" (gdy brak preferred/avoid)
+            else:
                 day_shifts = list(shifts[emp_id][date_str].values())
                 if day_shifts:
                     # Create a boolean variable: is_working_on_preferred_off_day
@@ -602,9 +620,8 @@ def add_preference_objective(model: cp_model.CpModel, shifts: Dict, input_data: 
                     model.Add(sum(day_shifts) >= 1).OnlyEnforceIf(is_working)
                     model.Add(sum(day_shifts) == 0).OnlyEnforceIf(is_working.Not())
                     
-                    # Add penalty (e.g. 100 points per violation)
-                    # You can adjust weight based on constraint.value or importance
-                    penalties.append(is_working * 300)
+                    # Kara za pracę (użyj wagi z constraint)
+                    penalties.append(is_working * constraint.weight)
         
     return sum(penalties) if penalties else None
 
