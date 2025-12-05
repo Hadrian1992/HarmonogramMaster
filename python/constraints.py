@@ -40,7 +40,7 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     add_11h_rest_constraint(model, shifts, input_data, history_shifts)
     
     # 3. 35h weekly rest (continuous)
-    add_35h_weekly_rest(model, shifts, input_data)
+    #add_35h_weekly_rest(model, shifts, input_data)
     
     # 4. 40h max per week
     #add_40h_weekly_limit(model, shifts, input_data)
@@ -71,13 +71,13 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     add_fixed_shift_constraints(model, shifts, input_data)
     
     # --- 2. NOWOŚĆ: Ciągłość obsady 24h (Rano/Popołudnie/Noc) ---
-    add_coverage_constraints(model, shifts, input_data)
+    #add_coverage_constraints(model, shifts, input_data)
     
     # --- 3. NOWOŚĆ: Wsparcie lidera (Lider nie może być sam) ---
     #add_leader_support_rule(model, shifts, input_data)
 
     # --- 4. NOWOŚĆ: Minimum jeden wolny weekend w miesiącu ---
-    add_min_one_free_weekend(model, shifts, input_data)
+    #add_min_one_free_weekend(model, shifts, input_data)
 
     # --- 5. NOWOŚĆ: Lider musi pracować każdy dzień roboczy ---
     add_leader_must_work_weekdays(model, shifts, input_data)
