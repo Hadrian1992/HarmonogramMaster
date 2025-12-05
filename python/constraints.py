@@ -807,16 +807,16 @@ def add_fixed_shift_constraints(model: cp_model.CpModel, shifts: Dict, input_dat
 
 def add_coverage_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
     """
-    Gwarantuje ciągłość pracy 24/7 poprzez podział doby na strefy.
-    Wymaga minimum 1 osoby w każdej strefie:
-    - RANO (start 6:00-14:00)
-    - POPOŁUDNIE (start 14:00-22:00 lub pokrycie popołudnia)
-    - NOC (start >19:00 lub is_night)
+    Gwarantuje ciągłość pracy 24/7 poprzez sprawdzanie pokrycia w kluczowych punktach czasowych.
+    Zamiast stref, sprawdzamy czy ktoś pracuje o konkretnych godzinach:
+    - 9:00 (pokrywa rano, eliminuje luki 8-10)
+    - 17:00 (pokrywa popołudnie, eliminuje luki 16-20)
+    - 1:00 (pokrywa noc)
     """
     for date_str in input_data.get_date_list():
-        morning_staff = []
-        afternoon_staff = []
-        night_staff = []
+        staff_at_9 = []
+        staff_at_17 = []
+        staff_at_1 = [] # 1:00 dnia następnego (noc)
 
         for emp in input_data.employees:
             if emp.id not in shifts or date_str not in shifts[emp.id]:
@@ -826,28 +826,52 @@ def add_coverage_constraints(model: cp_model.CpModel, shifts: Dict, input_data: 
                 if shift_type.id in shifts[emp.id][date_str]:
                     var = shifts[emp.id][date_str][shift_type.id]
                     
-                    # Definicja stref (możesz dostosować godziny)
                     start = shift_type.start_hour
                     end = shift_type.end_hour
                     
-                    # RANO (np. 8-14, 8-16)
-                    if 6 <= start < 14:
-                        morning_staff.append(var)
+                    # Sprawdź pokrycie o 9:00
+                    # Zmiana dzienna: start <= 9 i end > 9
+                    # Zmiana nocna (rzadkość rano): start <= 9 lub end > 9
+                    covers_9 = False
+                    if not shift_type.is_night:
+                        if start <= 9 and end > 9: covers_9 = True
+                    else:
+                        # Nocka (np. 20-8) nie pokrywa 9:00. Nocka (20-10) pokrywa.
+                        if end > 9: covers_9 = True
                     
-                    # POPOŁUDNIE (np. 14-20, ale też 8-20, 12-20)
-                    # Warunek: startuje po południu LUB trwa przez popołudnie (startuje rano i kończy wieczorem)
-                    if (12 <= start < 20) or (start < 14 and end > 16):
-                        afternoon_staff.append(var)
-                    
-                    # NOC (np. 20-8, 19-7)
-                    if shift_type.is_night or start >= 19:
-                        night_staff.append(var)
+                    if covers_9: staff_at_9.append(var)
 
-        # Twarde reguły: minimum 1 osoba w każdej strefie
-        # (Jeśli brakuje ludzi w allowed_shifts na daną porę, solver zgłosi INFEASIBLE)
-        if morning_staff: model.Add(sum(morning_staff) >= 1)
-        if afternoon_staff: model.Add(sum(afternoon_staff) >= 1)
-        if night_staff: model.Add(sum(night_staff) >= 1)
+                    # Sprawdź pokrycie o 17:00
+                    covers_17 = False
+                    if not shift_type.is_night:
+                        if start <= 17 and end > 17: covers_17 = True
+                    else:
+                        # Nocka (np. 16-4) pokrywa 17. Nocka (20-8) nie.
+                        if start <= 17: covers_17 = True
+                    
+                    if covers_17: staff_at_17.append(var)
+
+                    # Sprawdź pokrycie o 1:00 (noc)
+                    # To dotyczy nocy zaczynającej się w date_str i trwającej do dnia następnego.
+                    covers_1 = False
+                    if shift_type.is_night:
+                        # Nocka (start > end). Np. 20-8.
+                        # Pokrywa [start..24] i [0..end].
+                        # 1:00 mieści się w [0..end] jeśli end > 1.
+                        if end > 1: covers_1 = True
+                    else:
+                        # Zmiana dzienna (start < end). Np. 16-2.
+                        # Jeśli end > 24 (nieobsługiwane standardowo w prostym modelu int, ale sprawdźmy)
+                        # W tym modelu end może być > 24 tylko jeśli tak zdefiniowano.
+                        # Standardowo nocki mają is_night=True.
+                        pass
+                    
+                    if covers_1: staff_at_1.append(var)
+
+        # Wymuś minimum 1 osobę o każdej z tych godzin
+        if staff_at_9: model.Add(sum(staff_at_9) >= 1)
+        if staff_at_17: model.Add(sum(staff_at_17) >= 1)
+        if staff_at_1: model.Add(sum(staff_at_1) >= 1)
 
 def add_leader_support_rule(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
     """

@@ -162,6 +162,12 @@ export const ScheduleGrid: React.FC = () => {
             // 1. Dodajemy podstawowe dane
             formData.append('sendMain', String(sendMain));
             formData.append('sendIndividual', String(sendIndividual));
+
+            // Dodajemy nazwę miesiąca do tematu maila
+            const monthDate = new Date(schedule.year, schedule.month - 1);
+            const monthName = format(monthDate, 'LLLL yyyy', { locale: pl });
+            formData.append('monthName', monthName);
+
             // Wysyłamy listę pracowników jako JSON, żeby backend wiedział komu wysłać
             // (ale samych PDFów backend nie będzie generował, weźmie je z załączników)
             formData.append('employeesData', JSON.stringify(schedule.employees));
@@ -169,8 +175,8 @@ export const ScheduleGrid: React.FC = () => {
             // 2. Generujemy i dodajemy GŁÓWNY PDF
             if (sendMain) {
                 console.log('Generowanie głównego PDF...');
-                const mainBlob = getMainPdfBlob(schedule);
-                formData.append('mainPdf', mainBlob, 'Harmonogram_Zbiorczy.pdf');
+                const mainBlob = getMainPdfBlob(schedule, pdfTemplate);
+                formData.append('mainPdf', mainBlob, `Harmonogram_Zbiorczy_${pdfTemplate}.pdf`);
             }
 
             // 3. Generujemy i dodajemy INDYWIDUALNE PDF

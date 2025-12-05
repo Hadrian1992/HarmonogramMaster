@@ -1249,6 +1249,7 @@ app.post('/api/send-schedules-files', authenticateCookie, upload.any(), async (r
     try {
         const sendMain = req.body.sendMain === 'true';
         const sendIndividual = req.body.sendIndividual === 'true';
+        const monthName = req.body.monthName || 'Harmonogram';
         const employees = JSON.parse(req.body.employeesData); // Lista pracowników z emailami
         const files = req.files; // Tu są nasze PDFy
 
