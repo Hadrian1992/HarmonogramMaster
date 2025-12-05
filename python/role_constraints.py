@@ -268,7 +268,7 @@ def add_leader_must_work_weekdays(model, shifts, input_data):
             for shift_type in emp.allowed_shifts:
                 if shift_type.start_hour < 20:
                     shift_var = shifts[emp.id][date_str].get(shift_type.id)
-                    if shift_var:
+                    if shift_var is not None:
                         day_shifts.append(shift_var)
             
             # WYMAGA: min 1 zmiana dzienna w dni robocze
