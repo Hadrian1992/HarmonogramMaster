@@ -54,7 +54,7 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     #add_maria_rules(model, shifts, input_data)
     
     # 🆕 Phase 2: Role-based constraints (replaces add_maria_rules)
-    #add_role_based_shift_restrictions(model, shifts, input_data)
+    add_role_based_shift_restrictions(model, shifts, input_data)
     add_leader_support_constraint(model, shifts, input_data)
     
     # 8. Absences (L4, UW from existing schedule + user constraints)
@@ -73,10 +73,13 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     add_coverage_constraints(model, shifts, input_data)
     
     # --- 3. NOWOŚĆ: Wsparcie lidera (Lider nie może być sam) ---
-    add_leader_support_rule(model, shifts, input_data)
+    #add_leader_support_rule(model, shifts, input_data)
 
     # --- 4. NOWOŚĆ: Minimum jeden wolny weekend w miesiącu ---
     add_min_one_free_weekend(model, shifts, input_data)
+
+    # --- 5. NOWOŚĆ: Lider musi pracować każdy dzień roboczy ---
+    add_leader_must_work_weekdays(model, shifts, input_data)
     
     print("Hard constraints added successfully")
 

@@ -243,3 +243,34 @@ def add_leader_support_constraint(
             # If LIDER works, at least 1 WYCHOWAWCA must provide support
             if wychowawca_support:
                 model.Add(sum(wychowawca_support) >= 1).OnlyEnforceIf(any_lider)
+
+def add_leader_must_work_weekdays(model, shifts, input_data):
+    """
+    WYMUSZA: LIDER musi pracować każdy dzień roboczy
+    """
+    for date_str in input_data.get_date_list():
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+        is_weekend = date_obj.weekday() >= 5
+        
+        if is_weekend:
+            continue  # Weekendy pomijamy
+        
+        # Dla każdego LIDERA
+        for emp in input_data.employees:
+            if 'LIDER' not in emp.roles:
+                continue
+            
+            if emp.id not in shifts or date_str not in shifts[emp.id]:
+                continue
+            
+            # Znajdź zmiany dzienne (<20:00)
+            day_shifts = []
+            for shift_type in emp.allowed_shifts:
+                if shift_type.start_hour < 20:
+                    shift_var = shifts[emp.id][date_str].get(shift_type.id)
+                    if shift_var:
+                        day_shifts.append(shift_var)
+            
+            # WYMAGA: min 1 zmiana dzienna w dni robocze
+            if day_shifts:
+                model.Add(sum(day_shifts) >= 1)
