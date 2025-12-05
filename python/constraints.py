@@ -10,7 +10,8 @@ import calendar
 import sys
 from role_constraints import (
     add_role_based_shift_restrictions,
-    add_leader_support_constraint
+    add_leader_support_constraint,
+    add_leader_must_work_weekdays
 )
 
 def add_all_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput, history_shifts: Dict[str, ShiftType]):
