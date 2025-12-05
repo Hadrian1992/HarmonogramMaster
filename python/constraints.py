@@ -40,7 +40,7 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     add_11h_rest_constraint(model, shifts, input_data, history_shifts)
     
     # 3. 35h weekly rest (continuous)
-    #add_35h_weekly_rest(model, shifts, input_data)
+    add_35h_weekly_rest(model, shifts, input_data)
     
     # 4. 40h max per week
     #add_40h_weekly_limit(model, shifts, input_data)
@@ -423,6 +423,13 @@ def add_soft_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     if recovery_penalty is not None:
         objectives.append(recovery_penalty * 100) # 100 pkt kary za brak regeneracji po nocce 
 
+    # 6. Minimize Total Shifts (Prevent Overstaffing)
+    # Weight: 1 per shift. This acts as a regularizer.
+    # If other objectives are equal, prefer fewer shifts.
+    shifts_penalty = add_minimize_shifts_objective(model, shifts, input_data)
+    if shifts_penalty is not None:
+        objectives.append(shifts_penalty * 2) # Weight 2 to ensure it's noticeable but doesn't override preferences
+
     return objectives
 
 def add_hour_balancing_objective(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
@@ -753,6 +760,23 @@ def add_soft_night_recovery(model: cp_model.CpModel, shifts: Dict, input_data: S
             # Analogicznie dla day4 (opcjonalnie, można odpuścić dla uproszczenia)
             
     return sum(penalties) if penalties else None
+
+def add_minimize_shifts_objective(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
+    """
+    Soft constraint: Minimize total number of shifts.
+    Prevents overstaffing when demand is met.
+    """
+    all_shifts = []
+    for emp in input_data.employees:
+        if emp.id not in shifts: continue
+        for date_str in input_data.get_date_list():
+            if date_str in shifts[emp.id]:
+                for shift_var in shifts[emp.id][date_str].values():
+                    all_shifts.append(shift_var)
+    
+    if all_shifts:
+        return sum(all_shifts)
+    return None
 
 def add_fixed_shift_constraints(model: cp_model.CpModel, shifts: Dict, input_data: SolverInput):
     """
