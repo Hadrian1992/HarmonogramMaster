@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useScheduleStore } from '../../store/useScheduleStore';
 import { Calendar, Users, Sparkles, AlertOctagon, CheckCircle2, BarChart3, Settings } from 'lucide-react';
-import { generateSchedule, startSolverJob, pollJobStatus, getJobResult, type ORToolsEmployee, type ORToolsConstraint, type ORToolsResponse } from '../../utils/ortoolsService';
+import { startSolverJob, pollJobStatus, getJobResult, type ORToolsEmployee, type ORToolsConstraint, type ORToolsResponse } from '../../utils/ortoolsService';
 import DateRangePicker from './DateRangePicker';
 import EmployeeShiftConfig from './EmployeeShiftConfig';
 import DemandCalendar from './DemandCalendar';
