@@ -4,7 +4,7 @@ import { getDaysInMonth, format, setDate, isWeekend } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import type { ShiftType } from '../types';
 import clsx from 'clsx';
-import { FileDown, Download, Upload, Copy, ClipboardPaste, LayoutTemplate, Plus, Trash2, Play, X, Palette, Mail, CheckCircle, AlertCircle, UserPlus, Search, RefreshCw } from 'lucide-react';
+import { FileDown, Download, Upload, Copy, ClipboardPaste, LayoutTemplate, Plus, Trash2, Play, X, Palette, Mail, CheckCircle, AlertCircle, UserPlus, Search, RefreshCw, ChevronDown } from 'lucide-react';
 import { exportToPDF } from '../utils/pdfExport';
 import { exportScheduleData, importScheduleData } from '../utils/dataBackup';
 import { ShiftBlock } from './ShiftBlock';
@@ -38,6 +38,8 @@ export const ScheduleGrid: React.FC = () => {
     const [sendIndividual, setSendIndividual] = useState(true);
     const [sending, setSending] = useState(false);
     const [sendResult, setSendResult] = useState<{ sent: number, errors: any[] } | null>(null);
+    const [pdfTemplate, setPdfTemplate] = useState<'standard' | 'weekly'>('standard');
+    const [isPdfMenuOpen, setIsPdfMenuOpen] = useState(false);
 
     // Replacement Modal State
     const [showReplacementModal, setShowReplacementModal] = useState(false);
@@ -564,15 +566,52 @@ export const ScheduleGrid: React.FC = () => {
                                 Import
                             </GlassButton>
                         </div>
-                        <GlassButton
-                            onClick={() => exportToPDF(schedule)}
-                            icon={FileDown}
-                            variant="primary"
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-700 text-white border-none"
-                        >
-                            PDF
-                        </GlassButton>
+                        <div className="relative flex items-center">
+                            <GlassButton
+                                onClick={() => exportToPDF(schedule, pdfTemplate)}
+                                icon={FileDown}
+                                variant="primary"
+                                size="sm"
+                                className="rounded-r-none border-r-0 bg-red-600 hover:bg-red-700 text-white border-none"
+                            >
+                                PDF
+                            </GlassButton>
+                            <GlassButton
+                                onClick={() => setIsPdfMenuOpen(!isPdfMenuOpen)}
+                                variant="primary"
+                                size="sm"
+                                className="rounded-l-none px-2 bg-red-600 hover:bg-red-700 text-white border-none border-l border-red-500"
+                            >
+                                <ChevronDown size={14} />
+                            </GlassButton>
+
+                            {isPdfMenuOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-40 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="p-1 space-y-0.5">
+                                        <button
+                                            onClick={() => { setPdfTemplate('standard'); setIsPdfMenuOpen(false); }}
+                                            className={clsx(
+                                                "w-full text-left px-3 py-2 text-xs font-medium rounded-md transition-colors flex items-center justify-between",
+                                                pdfTemplate === 'standard' ? "bg-red-500/20 text-red-400" : "text-gray-300 hover:bg-white/5"
+                                            )}
+                                        >
+                                            Standard
+                                            {pdfTemplate === 'standard' && <CheckCircle size={12} />}
+                                        </button>
+                                        <button
+                                            onClick={() => { setPdfTemplate('weekly'); setIsPdfMenuOpen(false); }}
+                                            className={clsx(
+                                                "w-full text-left px-3 py-2 text-xs font-medium rounded-md transition-colors flex items-center justify-between",
+                                                pdfTemplate === 'weekly' ? "bg-red-500/20 text-red-400" : "text-gray-300 hover:bg-white/5"
+                                            )}
+                                        >
+                                            Tygodniowy
+                                            {pdfTemplate === 'weekly' && <CheckCircle size={12} />}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <GlassButton
                             onClick={() => setShowSendModal(true)}
                             icon={Mail}

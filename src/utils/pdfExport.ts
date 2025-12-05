@@ -9,13 +9,15 @@ import { pl } from 'date-fns/locale';
 // PUBLICZNE API
 // ===================================================================================
 
-export const exportToPDF = (schedule: Schedule) => {
-    const doc = generateScheduleDocSplit(schedule);
-    doc.save(`Harmonogram_${schedule.month}_${schedule.year}.pdf`);
+export type PDFTemplate = 'standard' | 'weekly';
+
+export const exportToPDF = (schedule: Schedule, template: PDFTemplate = 'standard') => {
+    const doc = template === 'weekly' ? generateWeeklyDoc(schedule) : generateStandardDoc(schedule);
+    doc.save(`Harmonogram_${schedule.month}_${schedule.year}_${template}.pdf`);
 };
 
-export const getMainPdfBlob = (schedule: Schedule): Blob => {
-    const doc = generateScheduleDocSplit(schedule);
+export const getMainPdfBlob = (schedule: Schedule, template: PDFTemplate = 'standard'): Blob => {
+    const doc = template === 'weekly' ? generateWeeklyDoc(schedule) : generateStandardDoc(schedule);
     return doc.output('blob');
 };
 
@@ -50,10 +52,10 @@ const calculateHours = (shifts: any, days: Date[], includeManualContact: boolean
 };
 
 // ===================================================================================
-// GŁÓWNA FUNKCJA GENERUJĄCA (A4 LANDSCAPE - INTELIGENTNY PODZIAŁ + PODSUMOWANIE)
+// SZABLON 1: STANDARDOWY (A4 LANDSCAPE - INTELIGENTNY PODZIAŁ + PODSUMOWANIE)
 // ===================================================================================
 
-const generateScheduleDocSplit = (schedule: Schedule): jsPDF => {
+const generateStandardDoc = (schedule: Schedule): jsPDF => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     addCustomFonts(doc);
     doc.setFont('Roboto');
@@ -150,6 +152,9 @@ const generateScheduleDocSplit = (schedule: Schedule): jsPDF => {
             headers.push({ content: 'ZM.', styles: { fillColor: [50, 50, 50], textColor: 255 } });
             subHeaders.push({ content: 'Licz.', styles: { fontSize: 7 } });
 
+            headers.push({ content: 'PENSUM', styles: { fillColor: [50, 50, 50], textColor: 255 } });
+            subHeaders.push({ content: 'Etat', styles: { fontSize: 7 } });
+
             headers.push({ content: 'K.', styles: { fillColor: [50, 50, 50], textColor: 255 } });
             subHeaders.push({ content: 'Godz.', styles: { fontSize: 7 } });
 
@@ -220,8 +225,10 @@ const generateScheduleDocSplit = (schedule: Schedule): jsPDF => {
                 const manualContact = emp.monthlyContactHours?.[monthKey] || 0;
                 const { total: grandTotal, contactHours: autoContactHours } = calculateHours(emp.shifts, allDays, true, manualContact);
                 const finalContactDisplay = autoContactHours + manualContact;
+                const pensum = grandTotal - finalContactDisplay;
 
                 row.push({ content: `${shiftCount}`, styles: { halign: 'center' } });
+                row.push({ content: `${pensum}`, styles: { halign: 'center' } });
                 row.push({ content: `${finalContactDisplay}`, styles: { halign: 'center' } });
                 row.push({ content: `${grandTotal}h`, styles: { fontStyle: 'normal', fillColor: [230, 255, 230] } });
             }
@@ -256,73 +263,258 @@ const generateScheduleDocSplit = (schedule: Schedule): jsPDF => {
             margin: { top: 25, right: 10, bottom: 10, left: 10 }
         });
 
-        // --- LEGENDA I PODPISY ---
-        const tableEndY = (doc as any).lastAutoTable.finalY;
-
-        // 1. LEGENDA (Po lewej, pod tabelą)
-        const legendY = tableEndY + 8;
-        doc.setFontSize(10);
-        doc.setTextColor(60);
-        doc.text('Legenda:', 15, legendY);
-        doc.setFontSize(8);
-        doc.text('/ - Wolne | UW - Urlop wypoczynkowy | UŻ - Urlop na żądanie | L4 - Zwolnienie lekarskie', 15, legendY + 4);
-        doc.text('K - Godziny kontaktowe | USW - Urlop siła wyższa | UM - Urlop macierzyński | UB - Urlop bezpłatny', 15, legendY + 8);
-
-        // 2. PODPISY PRACOWNIKÓW (Po prawej, NIŻEJ i WIĘKSZE)
-        const empSignX = 180; // Trochę w lewo, bo czcionka większa, żeby się zmieściło
-
-        // Zaczynamy niżej niż legenda (np. +15mm od końca tabeli)
-        let currentEmpY = tableEndY + 15;
-
-        doc.setFontSize(14); // Duża czcionka nagłówka
-        doc.setTextColor(0);
-        doc.text('Podpisy pracowników:', empSignX, currentEmpY);
-        currentEmpY += 6; // Większy odstęp pod nagłówkiem
-
-        const employeesToSign = schedule.employees.slice(0, 7);
-
-        doc.setFontSize(13); // Nazwiska ciut mniejsze niż nagłówek, ale czytelne (było 8)
-        employeesToSign.forEach(emp => {
-            doc.text(`${emp.name}: ..............................`, empSignX, currentEmpY);
-            currentEmpY += 6; // Większy odstęp między liniami (było 4.5)
-        });
-
-        // 3. PODPISY ZARZĄDZAJĄCE (Na samym dole)
-        const minFooterY = 175;
-        const dynamicFooterY = currentEmpY + 10;
-        const footerSignY = Math.max(minFooterY, dynamicFooterY);
-
-        doc.setFontSize(13);
-
-        // Lewa strona - Sporządził
-        doc.text('Sporządził:', 30, footerSignY);
-        doc.setFontSize(12);
-        doc.setFont('Roboto', 'italic');
-        doc.text('Maria Pankowska', 40, footerSignY + 8);
-        doc.setFont('Roboto', 'normal');
-        doc.setLineWidth(0.5);
-        doc.line(30, footerSignY + 10, 100, footerSignY + 10);
-
-        // Prawa strona - Zatwierdził
-        doc.setFontSize(13);
-        doc.text('Zatwierdził:', 200, footerSignY);
-        doc.line(200, footerSignY + 10, 270, footerSignY + 10);
-
-        // --- KLAUZULA RODO (NA KAŻDEJ STRONIE) ---
-        const rodoY = 195; // Blisko dolnej krawędzi A4 Landscape (210mm)
-        doc.setFontSize(7); // Mała, dyskretna czcionka
-        doc.setTextColor(120); // Jasnoszary kolor
-
-        const rodoText = 'Administratorem danych osobowych jest Harmonogram Master. Dane przetwarzane są wyłącznie w celu zarządzania harmonogramem pracy.\nZgodnie z RODO masz prawo dostępu do swoich danych, ich sprostowania, usunięcia lub ograniczenia przetwarzania.';
-
-        doc.text(rodoText, 148.5, rodoY, { align: 'center', maxWidth: 250 });
-
+        addFooter(doc, (doc as any).lastAutoTable.finalY);
     });
 
     return doc;
 };
 
-// --- INDYWIDUALNA KARTA (BEZ ZMIAN) ---
+// ===================================================================================
+// SZABLON 2: TYGODNIOWY (A4 LANDSCAPE - PODZIAŁ NA TYGODNIE Z PODSUMOWANIEM)
+// ===================================================================================
+
+const generateWeeklyDoc = (schedule: Schedule): jsPDF => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    addCustomFonts(doc);
+    doc.setFont('Roboto');
+
+    const monthDate = new Date(schedule.year, schedule.month - 1);
+    const daysInMonth = getDaysInMonth(monthDate);
+    const allDays = Array.from({ length: daysInMonth }, (_, i) => setDate(monthDate, i + 1));
+
+    // Dzielimy na 2 części po 2 tygodnie (lub 3 jeśli miesiąc ma 5-6 tygodni)
+    // Ale standardowo 2 strony powinny wystarczyć dla większości miesięcy.
+    // Tniemy po pełnych tygodniach.
+
+    // Znajdź wszystkie poniedziałki
+    const mondays = allDays.filter(d => d.getDay() === 1);
+    // Jeśli miesiąc nie zaczyna się od poniedziałku, pierwszy dzień to też początek "tygodnia" w sensie wizualnym
+    if (allDays[0].getDay() !== 1) mondays.unshift(allDays[0]);
+
+    // Podział na strony: 2 tygodnie na stronę
+    // 14 dni + 2 kolumny podsumowań = 16 kolumn danych + 1 kolumna nazwiska
+
+    // Uproszczony podział: Dni 1-14 (lub do drugiej niedzieli) na str 1, reszta na str 2
+    let splitIndex = 14;
+    // Szukamy niedzieli w zakresie 14-22 (połowa miesiąca)
+    for (let i = 14; i < 22 && i < allDays.length; i++) {
+        if (allDays[i].getDay() === 0) { // Niedziela
+            splitIndex = i + 1; // Tniemy po niedzieli
+            break;
+        }
+    }
+
+    const chunks = [
+        allDays.slice(0, splitIndex),
+        allDays.slice(splitIndex)
+    ];
+
+    const dayNameMap: Record<string, string> = {
+        'poniedziałek': 'pn', 'wtorek': 'wt', 'środa': 'śr', 'czwartek': 'czw',
+        'piątek': 'pt', 'sobota': 'sb', 'niedziela': 'nd'
+    };
+
+    chunks.forEach((chunkDays, pageIndex) => {
+        if (chunkDays.length === 0) return;
+        if (pageIndex > 0) doc.addPage();
+
+        // Nagłówek
+        doc.setFontSize(14);
+        doc.text('PLAN PRACY PRACOWNIKÓW PEDAGOGICZNYCH', 148.5, 15, { align: 'center' });
+        doc.setFontSize(10);
+        const dateRange = `OD ${format(allDays[0], 'dd.MM.yyyy')} DO ${format(allDays[daysInMonth - 1], 'dd.MM.yyyy')}`;
+        doc.text(dateRange, 148.5, 20, { align: 'center' });
+
+        const headers: any[] = [{ content: 'IMIĘ I\nNAZWISKO', styles: { halign: 'center', valign: 'middle' } }];
+        const subHeaders: any[] = ['']; // Pusty dla nazwiska (scalony wiersz)
+
+        // Budowanie nagłówków
+        let currentWeekNum = 0;
+        let lastWeekNum = -1;
+
+        chunkDays.forEach(day => {
+            const isoWeek = getISOWeek(day);
+            if (isoWeek !== lastWeekNum) {
+                currentWeekNum++;
+                lastWeekNum = isoWeek;
+            }
+
+            // Dzień miesiąca
+            headers.push({
+                content: format(day, 'dd'),
+                styles: { halign: 'center', fillColor: isWeekend(day) ? [255, 255, 255] : [255, 255, 255], textColor: 0, fontStyle: 'normal' }
+            });
+
+            // Dzień tygodnia
+            const dayName = format(day, 'EEEE', { locale: pl }).toLowerCase();
+            const shortName = dayNameMap[dayName] || dayName.substring(0, 2);
+            subHeaders.push({
+                content: shortName,
+                styles: { halign: 'center', textColor: isWeekend(day) ? [200, 0, 0] : [0, 0, 0] }
+            });
+
+            // Jeśli niedziela lub ostatni dzień chunka -> dodaj kolumnę podsumowania
+            if (day.getDay() === 0 || day === chunkDays[chunkDays.length - 1]) {
+                // Sprawdź czy to koniec tygodnia (niedziela) lub koniec miesiąca
+                if (day.getDay() === 0 || day.getDate() === daysInMonth) {
+                    headers.push({
+                        content: 'Godz.\nWypracowane',
+                        styles: { halign: 'center', valign: 'middle', fontSize: 8 }
+                    });
+                    subHeaders.push({
+                        content: 'w tyg.',
+                        styles: { halign: 'center', fontSize: 8 }
+                    });
+                }
+            }
+        });
+
+        // Jeśli to ostatnia strona, dodaj nagłówki podsumowania
+        const isLastPage = pageIndex === chunks.length - 1;
+        if (isLastPage) {
+            headers.push({ content: 'PENSUM', styles: { fillColor: [50, 50, 50], textColor: 255, fontSize: 8 } });
+            subHeaders.push({ content: 'Etat', styles: { fontSize: 7 } });
+
+            headers.push({ content: 'K.', styles: { fillColor: [50, 50, 50], textColor: 255, fontSize: 8 } });
+            subHeaders.push({ content: 'Godz.', styles: { fontSize: 7 } });
+
+            headers.push({ content: 'SUMA', styles: { fillColor: [0, 0, 0], textColor: 255, fontStyle: 'normal', fontSize: 8 } });
+            subHeaders.push({ content: 'Mies.', styles: { fontSize: 7, fontStyle: 'normal' } });
+        }
+
+        // Wiersze
+        const bodyRows: RowInput[] = [];
+        schedule.employees.forEach(emp => {
+            const row: any[] = [{ content: emp.name.replace(' ', '\n'), styles: { minCellHeight: 15, valign: 'middle' } }];
+
+            let weeklyHours = 0;
+            let currentWeekDays: Date[] = [];
+
+            chunkDays.forEach((day) => {
+                const dateStr = format(day, 'yyyy-MM-dd');
+                const shift = emp.shifts[dateStr];
+                let cellContent = '/';
+
+                if (shift) {
+                    if (shift.type === 'WORK') {
+                        cellContent = `${shift.startHour}/${shift.endHour}`;
+                        if (shift.contactHours) cellContent += `\nK${shift.contactHours}`;
+                    } else if (shift.type === 'W') {
+                        cellContent = 'W'; // Wolne
+                    } else {
+                        cellContent = shift.type; // L4, UW itp.
+                    }
+
+                    // Zliczanie godzin do tygodniówki
+                    if (shift.type === 'WORK' || PAID_TYPES.includes(shift.type)) {
+                        weeklyHours += (shift.hours || 0);
+                    }
+                }
+
+                row.push({
+                    content: cellContent,
+                    styles: { halign: 'center', valign: 'middle', fontSize: 9 }
+                });
+
+                // Logika podsumowania tygodnia
+                currentWeekDays.push(day);
+                if (day.getDay() === 0 || day === chunkDays[chunkDays.length - 1]) {
+                    if (day.getDay() === 0 || day.getDate() === daysInMonth) {
+                        row.push({
+                            content: weeklyHours > 0 ? `${weeklyHours}` : '-',
+                            styles: { halign: 'center', valign: 'middle', fontStyle: 'normal', fillColor: [250, 250, 250] }
+                        });
+                        weeklyHours = 0; // Reset na nowy tydzień
+                        currentWeekDays = [];
+                    }
+                }
+            });
+
+            // --- WSTAWIANIE WARTOŚCI PODSUMOWANIA (TYLKO OSTATNIA STRONA) ---
+            if (isLastPage) {
+                const monthKey = `${schedule.year}-${String(schedule.month).padStart(2, '0')}`;
+                const manualContact = emp.monthlyContactHours?.[monthKey] || 0;
+                const { total: grandTotal, contactHours: autoContactHours } = calculateHours(emp.shifts, allDays, true, manualContact);
+                const finalContactDisplay = autoContactHours + manualContact;
+                const pensum = grandTotal - finalContactDisplay;
+
+                // 1. Pensum (Suma - K)
+                row.push({
+                    content: `${pensum}`,
+                    styles: { halign: 'center', valign: 'middle', fontStyle: 'italic' }
+                });
+
+                // 2. Kontakty (K)
+                row.push({
+                    content: `${finalContactDisplay}`,
+                    styles: { halign: 'center', valign: 'middle' }
+                });
+
+                // 3. Suma Miesięczna
+                row.push({
+                    content: `${grandTotal}h`,
+                    styles: { fontStyle: 'normal', fillColor: [230, 255, 230], halign: 'center', valign: 'middle' }
+                });
+            }
+
+            bodyRows.push(row);
+        });
+
+        autoTable(doc, {
+            startY: 25,
+            head: [headers, subHeaders],
+            body: bodyRows,
+            theme: 'grid',
+            styles: {
+                font: 'Roboto', fontStyle: 'normal', fontSize: 7, // Zmniejszona czcionka
+                cellPadding: 1, // Mniejszy padding
+                lineColor: [0, 0, 0], lineWidth: 0.1,
+                textColor: 0,
+                overflow: 'linebreak', // Zawijanie tekstu
+                valign: 'middle',
+                halign: 'center'
+            },
+            headStyles: {
+                fillColor: [255, 255, 255], textColor: 0, fontStyle: 'normal', valign: 'middle', fontSize: 8 // Nagłówki też nieco mniejsze
+            },
+            columnStyles: {
+                0: { cellWidth: 25, halign: 'center' } // Imię i nazwisko
+            },
+            margin: { top: 25, right: 10, bottom: 10, left: 10 }
+        });
+
+        addFooter(doc, (doc as any).lastAutoTable.finalY);
+    });
+
+    return doc;
+};
+
+// ===================================================================================
+// WSPÓLNA STOPKA
+// ===================================================================================
+
+const addFooter = (doc: jsPDF, startY: number) => {
+    // 1. LEGENDA
+    const legendY = startY + 8;
+    doc.setFontSize(8);
+    doc.setTextColor(60);
+    doc.text('Legenda:', 15, legendY);
+    doc.setFontSize(7); // Mniejsza czcionka legendy
+    doc.text('/ - Wolne | UW - Urlop wypoczynkowy | UŻ - Urlop na żądanie | L4 - Zwolnienie lekarskie', 15, legendY + 4);
+    doc.text('K - Godziny kontaktowe | USW - Urlop siła wyższa | UM - Urlop macierzyński | UB - Urlop bezpłatny', 15, legendY + 8);
+
+    // 2. KLAUZULA RODO (Na samym dole)
+    const rodoY = 195;
+    doc.setFontSize(6); // Bardzo mała czcionka dla RODO
+    doc.setTextColor(120);
+    const rodoText = 'Administratorem danych osobowych jest Harmonogram Master. Dane przetwarzane są wyłącznie w celu zarządzania harmonogramem pracy.\nZgodnie z RODO masz prawo dostępu do swoich danych, ich sprostowania, usunięcia lub ograniczenia przetwarzania.';
+    doc.text(rodoText, 148.5, rodoY, { align: 'center', maxWidth: 250 });
+};
+
+// ===================================================================================
+// INDYWIDUALNA KARTA (BEZ ZMIAN)
+// ===================================================================================
+
 const generateSingleEmployeeDoc = (schedule: Schedule, employeeIndex: number): jsPDF => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     addCustomFonts(doc);
