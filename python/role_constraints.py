@@ -229,7 +229,7 @@ def add_leader_support_constraint(
                 support_shifts = []
                 for shift_type in emp.allowed_shifts:
                     # Shifts that cover afternoon (e.g., 8-20, 14-20, 10-20)
-                    if shift_type.start_hour < 20 and shift_type.end_hour >= 16:
+                    if shift_type.start_hour < 20 and shift_type.end_hour >= 14:
                         shift_var = shifts[emp.id][date_str].get(shift_type.id)
                         if shift_var is not None:
                             support_shifts.append(shift_var)

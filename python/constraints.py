@@ -54,7 +54,7 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     #add_maria_rules(model, shifts, input_data)
     
     # 🆕 Phase 2: Role-based constraints (replaces add_maria_rules)
-    add_role_based_shift_restrictions(model, shifts, input_data)
+    #add_role_based_shift_restrictions(model, shifts, input_data)
     add_leader_support_constraint(model, shifts, input_data)
     
     # 8. Absences (L4, UW from existing schedule + user constraints)
