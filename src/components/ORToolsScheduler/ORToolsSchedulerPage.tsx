@@ -32,6 +32,7 @@ export default function ORToolsSchedulerPage() {
     const [result, setResult] = useState<ORToolsResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [progress, setProgress] = useState<string | null>(null);  // 🆕 Progress dla async job
 
     // Debug: Sprawdź w konsoli czy config się ładuje
     useEffect(() => {
@@ -59,6 +60,7 @@ export default function ORToolsSchedulerPage() {
         setLoading(true);
         setError(null);
         setResult(null);
+        setProgress(null);  // 🆕 Reset progress
 
         try {
             console.log('🚀 Starting async solver job...');
@@ -69,7 +71,7 @@ export default function ORToolsSchedulerPage() {
             const pollInterval = setInterval(async () => {
                 try {
                     const status = await pollJobStatus(jobId);
-                    setError(`🔄 Generowanie... ${status.elapsed}s\n📊 ${status.progress}`);
+                    setProgress(`⏱️ ${status.elapsed}s | ${status.progress}`);  // 🆕 Niebieski progress zamiast czerwonego błędu
 
                     if (status.completed) {
                         clearInterval(pollInterval);
@@ -77,6 +79,7 @@ export default function ORToolsSchedulerPage() {
                             const result = await getJobResult(jobId);
                             setResult(result);
                             setError(null);
+                            setProgress(null);  // 🆕 Wyczyść progress
                             setLoading(false);
                             if (result.status === 'SUCCESS') {
                                 setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -99,10 +102,10 @@ export default function ORToolsSchedulerPage() {
             setTimeout(() => {
                 clearInterval(pollInterval);
                 if (loading) {
-                    setError('⏱️ Timeout (10 min)');
+                    setError('⏱️ Timeout (30 min)');
                     setLoading(false);
                 }
-            }, 600000);
+            }, 1800000);
         } catch (err: any) {
             setError(err.message || 'Błąd komunikacji');
             setLoading(false);
@@ -132,6 +135,17 @@ export default function ORToolsSchedulerPage() {
                         </div>
                     </div>
                 </header>
+
+                {/* Progress Banner - 🆕 Niebieski progress */}
+                {progress && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 rounded-r-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
+                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0 mt-0.5" />
+                        <div>
+                            <h3 className="font-semibold text-blue-800 dark:text-blue-200">Trwa generowanie grafiku</h3>
+                            <p className="text-blue-700 dark:text-blue-300 text-sm mt-1">{progress}</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Error Banner */}
                 {error && (

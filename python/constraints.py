@@ -71,7 +71,7 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     add_fixed_shift_constraints(model, shifts, input_data)
     
     # --- 2. NOWOŚĆ: Ciągłość obsady 24h (Rano/Popołudnie/Noc) ---
-    #add_coverage_constraints(model, shifts, input_data)
+    add_coverage_constraints(model, shifts, input_data)
     
     # --- 3. NOWOŚĆ: Wsparcie lidera (Lider nie może być sam) ---
     #add_leader_support_rule(model, shifts, input_data)
