@@ -135,7 +135,7 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
 
                                             <div className="text-gray-500 dark:text-gray-400 text-xs flex flex-col gap-0.5 mt-0.5">
                                                 <div className="flex items-center gap-1.5 truncate">
-                                                    <span>📅 {rule.dateRange ? `${rule.dateRange[0]} ➝ ${rule.dateRange[1]}` : rule.date}</span>
+                                                    <span>📅 {rule.type === 'PREFERENCE' ? rule.date : (rule.dateRange ? `${rule.dateRange[0]} ➝ ${rule.dateRange[1]}` : '')}</span>
                                                     {rule.description && (
                                                         <>
                                                             <span>•</span>
@@ -159,8 +159,8 @@ export default function RuleEditor({ employees, value, onChange }: RuleEditorPro
                                                         )}
                                                         {rule.weight && (
                                                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${rule.weight === 30 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
-                                                                    rule.weight === 100 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
-                                                                        'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                                                                rule.weight === 100 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                                                                    'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
                                                                 }`}>
                                                                 ⚖️ {rule.weight === 30 ? 'Niska' : rule.weight === 100 ? 'Wysoka' : 'Średnia'}
                                                             </span>

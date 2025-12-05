@@ -15,7 +15,7 @@ from typing import Dict, List
 # 🎯 EARLY STOP CONFIGURATION - Dostosuj te wartości!
 # ============================================================================
 EARLY_STOP_ENABLED = True          # True = włączone, False = wyłączone
-EARLY_STOP_SCORE_THRESHOLD = 600   # Zatrzymaj gdy score < 600
+EARLY_STOP_SCORE_THRESHOLD = 800   # Zatrzymaj gdy score < 600
 EARLY_STOP_MIN_SOLUTIONS = 10       # Znajdź minimum 5 rozwiązań przed early stop
 EARLY_STOP_NO_IMPROVEMENT_SEC = 600  # Zatrzymaj jeśli brak poprawy przez 5 minut
 

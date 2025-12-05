@@ -402,7 +402,7 @@ def add_soft_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     # 3. Employee preferences
     preference_penalty = add_preference_objective(model, shifts, input_data)
     if preference_penalty is not None:
-        objectives.append(preference_penalty * 3)  # Weight: 3
+        objectives.append(preference_penalty * 10)  # Weight: 10 (Boosted from 3 to make preferences stronger)
     
     # 3.5 FREE_TIME (soft absence) ← DODAJ TO
     free_time_penalty = add_free_time_objective(model, shifts, input_data)
@@ -522,6 +522,13 @@ def add_min_one_free_weekend(model: cp_model.CpModel, shifts: Dict, input_data: 
     if not weekend_starts:
         return
 
+    # 🆕 OPTIMIZATION: Only enforce "at least one free weekend" if there are at least 2 weekends.
+    # If there is only 1 weekend in the range, enforcing this would mean NOBODY can work that weekend,
+    # which likely makes the schedule INFEASIBLE (if there is any demand).
+    if len(weekend_starts) < 2:
+        print(f"Skipping min_one_free_weekend constraint (only {len(weekend_starts)} weekend in range)", file=sys.stderr)
+        return
+
     # 2. For each employee, ensure at least one weekend is fully free
     for emp in input_data.employees:
         if emp.id not in shifts:
@@ -608,7 +615,7 @@ def add_preference_objective(model: cp_model.CpModel, shifts: Dict, input_data: 
                 for shift_id in (constraint.preferred_shifts or []):
                     if shift_id in shifts[emp_id][date_str]:
                         shift_var = shifts[emp_id][date_str][shift_id]
-                        bonus_weight = constraint.weight // 2  # Połowa wagi jako bonus
+                        bonus_weight = constraint.weight  # Pełna waga jako bonus (było // 2)
                         penalties.append(shift_var * (-bonus_weight))
             
             # STARE: Proste "wolne" (gdy brak preferred/avoid)

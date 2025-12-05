@@ -17,6 +17,7 @@ import { PageHeader } from './ui/PageHeader';
 import { GlassButton } from './ui/GlassButton';
 import { getMainPdfBlob } from '../utils/pdfExport';
 import { getEmployeePdfBlob } from '../utils/employeePdfExport';
+import { WorkingHoursReference } from './WorkingHoursReference';
 
 export const ScheduleGrid: React.FC = () => {
     const { schedule, updateShift, setManualContactHours, restoreSchedule, copyDay, pasteDay, copiedDay, templates: weeklyTemplates, saveTemplate, applyTemplate: applyWeeklyTemplate, deleteTemplate, colorSettings } = useScheduleStore();
@@ -510,7 +511,9 @@ export const ScheduleGrid: React.FC = () => {
             <PageHeader
                 title="Grafik Pracy"
                 description={`Edycja harmonogramu: ${format(new Date(schedule.year, schedule.month - 1), 'LLLL yyyy', { locale: pl })}`}
-            />
+            >
+                <WorkingHoursReference currentMonth={schedule.month} currentYear={schedule.year} />
+            </PageHeader>
 
             <GlassCard className="w-full overflow-hidden">
                 {/* Toolbar */}
