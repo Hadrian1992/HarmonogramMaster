@@ -1,3 +1,5 @@
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
@@ -1083,15 +1085,77 @@ function mergeAbsences(existingSchedule, userConstraints, dateRange) {
 
 
 // 3. DATA ROUTES (Protected)
-app.get('/api/data', authenticateCookie, (req, res) => {
+app.get('/api/data', authenticateCookie, async (req, res) => {
     try {
-        const data = fs.readFileSync(DATA_FILE, 'utf8');
-        res.json(JSON.parse(data));
+        console.log("📡 [SQL] Pobieranie danych z bazy PostgreSQL...");
+
+        // 1. Pobieramy pracowników
+        const employeesDB = await prisma.employees.findMany({
+            include: {
+                shifts: true,
+                preferences: true,
+                monthly_contact_hours: true
+            }
+        });
+
+        // 2. Pobieramy ustawienia
+        let settingsObject = {};
+        try {
+            const settingsDB = await prisma.settings.findMany();
+            settingsDB.forEach(s => settingsObject[s.key] = s.value);
+        } catch (e) {
+            console.warn("⚠️ Brak ustawień w bazie.");
+        }
+
+        // 3. Konwersja na format dla Frontendu
+        const formattedEmployees = employeesDB.map(emp => {
+            const shiftsObject = {};
+            emp.shifts.forEach(shift => {
+                const dateKey = shift.date.toISOString().split('T')[0];
+                shiftsObject[dateKey] = {
+                    id: shift.id,
+                    date: dateKey,
+                    type: shift.type,
+                    startHour: shift.start_hour,
+                    endHour: shift.end_hour,
+                    hours: Number(shift.hours),
+                    contactHours: Number(shift.contact_hours)
+                };
+            });
+
+            const contactsObject = {};
+            emp.monthly_contact_hours.forEach(contact => {
+                contactsObject[contact.month_key] = contact.hours;
+            });
+
+            return {
+                id: emp.id,
+                name: emp.name,
+                email: emp.email || "",
+                roles: emp.roles || [],
+                preferences: emp.preferences[0]?.content || "",
+                shifts: shiftsObject,
+                monthlyContactHours: contactsObject
+            };
+        });
+
+        // 4. Wysyłamy odpowiedź
+        res.json({
+            schedule: {
+                id: 'sql-schedule',
+                month: new Date().getMonth() + 1,
+                year: new Date().getFullYear(),
+                employees: formattedEmployees
+            },
+            settings: settingsObject
+        });
+
     } catch (error) {
-        console.error('Error reading data:', error);
-        res.status(500).json({ error: 'Failed to read data' });
+        console.error('❌ Błąd SQL w GET /api/data:', error);
+        res.status(500).json({ error: 'Failed to read data from SQL' });
     }
 });
+
 
 app.post('/api/data', authenticateCookie, (req, res) => {
     try {
