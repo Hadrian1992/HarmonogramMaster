@@ -1092,9 +1092,16 @@ app.get('/api/data', authenticateCookie, async (req, res) => {
         // 1. Pobieramy pracowników
         const employeesDB = await prisma.employees.findMany({
             include: {
-                shifts: true,
+                shifts: {
+                    orderBy: {
+                        date: 'asc' // <--- TO JEST KLUCZ DO SUKCESU! Sortuj zmiany od najstarszej
+                    }
+                },
                 preferences: true,
                 monthly_contact_hours: true
+            },
+            orderBy: {
+                name: 'asc' // Przy okazji posortujmy pracowników alfabetycznie, żeby był porządek
             }
         });
 
