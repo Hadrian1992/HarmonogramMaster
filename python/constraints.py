@@ -77,7 +77,7 @@ def add_hard_constraints(model: cp_model.CpModel, shifts: Dict, input_data: Solv
     #add_leader_support_rule(model, shifts, input_data)
 
     # --- 4. NOWOŚĆ: Minimum jeden wolny weekend w miesiącu ---
-    #add_min_one_free_weekend(model, shifts, input_data)
+    add_min_one_free_weekend(model, shifts, input_data)
 
     # --- 5. NOWOŚĆ: Lider musi pracować każdy dzień roboczy ---
     add_leader_must_work_weekdays(model, shifts, input_data)

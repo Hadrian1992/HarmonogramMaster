@@ -8,14 +8,28 @@ export interface MonthData {
 export interface EmployeeComparison {
     id: string;
     name: string;
+
+    // Godziny
     month1Hours: number;
     month2Hours: number;
     difference: number;
     percentChange: number;
+
+    // Ilość zmian
     month1Shifts: number;
     month2Shifts: number;
+
+    // Urlopy
     month1Vacation: number;
     month2Vacation: number;
+
+    // NOWE: Nocki
+    month1NightShifts: number;
+    month2NightShifts: number;
+
+    // NOWE: Kontakty
+    month1ContactHours: number;
+    month2ContactHours: number;
 }
 
 export interface MonthComparisonData {
@@ -29,15 +43,13 @@ export interface MonthComparisonData {
 }
 
 /**
- * Returns total counted hours for a given employee in a specific month.
- * Includes WORK, K (Kontakty) and all non‑working types that have hours.
+ * Zlicza godziny (Praca + Kontakty + Inne płatne)
  */
 function getMonthHours(schedule: Schedule, employeeId: string, month: number, year: number): number {
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
     const employee = schedule.employees.find(e => e.id === employeeId);
     if (!employee) return 0;
 
-    // Sum shift hours, handling contact (K) shifts specially.
     const shiftSum = Object.values(employee.shifts)
         .filter(s => s.date.startsWith(monthKey))
         .reduce((sum, s) => {
@@ -47,7 +59,6 @@ function getMonthHours(schedule: Schedule, employeeId: string, month: number, ye
                 ['L4', 'UW', 'UZ', 'OP', 'UŻ', 'UM', 'USW', 'UB'].includes(s.type)
             ) {
                 if (s.type === 'K') {
-                    // Contact shifts may store hours in contactHours or fall back to hours/start‑end.
                     const contactHours = typeof s.contactHours === 'number'
                         ? s.contactHours
                         : typeof s.hours === 'number'
@@ -57,6 +68,7 @@ function getMonthHours(schedule: Schedule, employeeId: string, month: number, ye
                                 : 0);
                     return sum + contactHours;
                 }
+
                 const shiftHours = typeof s.hours === 'number'
                     ? s.hours
                     : (s.startHour !== undefined && s.endHour !== undefined
@@ -67,29 +79,66 @@ function getMonthHours(schedule: Schedule, employeeId: string, month: number, ye
             return sum;
         }, 0);
 
-    // Some employees may store aggregated contact hours per month.
     const monthlyContact = (employee as any).monthlyContactHours?.[monthKey] ?? 0;
     return shiftSum + monthlyContact;
 }
 
-/** Number of WORK shifts in the month */
+/** Liczba zmian pracujących (WORK) */
 function getMonthShifts(schedule: Schedule, employeeId: string, month: number, year: number): number {
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
     const employee = schedule.employees.find(e => e.id === employeeId);
     if (!employee) return 0;
+
     return Object.values(employee.shifts)
         .filter(s => s.date.startsWith(monthKey) && s.type === 'WORK')
         .length;
 }
 
-/** Number of vacation days (UW) in the month */
+/** Liczba dni urlopu (UW) */
 function getMonthVacationDays(schedule: Schedule, employeeId: string, month: number, year: number): number {
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
     const employee = schedule.employees.find(e => e.id === employeeId);
     if (!employee) return 0;
+
     return Object.values(employee.shifts)
         .filter(s => s.date.startsWith(monthKey) && s.type === 'UW')
         .length;
+}
+
+/** NOWE: Zlicza nocki (WORK gdzie isNight=true lub start>=20) */
+function getMonthNightShifts(schedule: Schedule, employeeId: string, month: number, year: number): number {
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+    const employee = schedule.employees.find(e => e.id === employeeId);
+    if (!employee) return 0;
+
+    return Object.values(employee.shifts)
+        .filter(s => {
+            if (!s.date.startsWith(monthKey)) return false;
+            if (s.type !== 'WORK') return false;
+            return (s as any).isNight === true || (s.startHour !== undefined && s.startHour >= 20);
+        })
+        .length;
+}
+
+/** NOWE: Zlicza godziny kontaktów (zmiany K + monthlyContactHours) */
+function getMonthContacts(schedule: Schedule, employeeId: string, month: number, year: number): number {
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+    const employee = schedule.employees.find(e => e.id === employeeId);
+    if (!employee) return 0;
+
+    const shiftContactSum = Object.values(employee.shifts)
+        .filter(s => s.date.startsWith(monthKey) && s.type === 'K')
+        .reduce((sum, s) => {
+            const h = typeof s.contactHours === 'number'
+                ? s.contactHours
+                : typeof s.hours === 'number'
+                    ? s.hours
+                    : (s.startHour !== undefined && s.endHour !== undefined ? s.endHour - s.startHour : 0);
+            return sum + h;
+        }, 0);
+
+    const monthlyAggregated = (employee as any).monthlyContactHours?.[monthKey] ?? 0;
+    return shiftContactSum + monthlyAggregated;
 }
 
 export function calculateMonthComparison(
@@ -102,6 +151,7 @@ export function calculateMonthComparison(
         const month2Hours = getMonthHours(schedule, emp.id, month2.month, month2.year);
         const difference = month2Hours - month1Hours;
         const percentChange = month1Hours > 0 ? (difference / month1Hours) * 100 : 0;
+
         return {
             id: emp.id,
             name: emp.name,
@@ -112,7 +162,13 @@ export function calculateMonthComparison(
             month1Shifts: getMonthShifts(schedule, emp.id, month1.month, month1.year),
             month2Shifts: getMonthShifts(schedule, emp.id, month2.month, month2.year),
             month1Vacation: getMonthVacationDays(schedule, emp.id, month1.month, month1.year),
-            month2Vacation: getMonthVacationDays(schedule, emp.id, month2.month, month2.year)
+            month2Vacation: getMonthVacationDays(schedule, emp.id, month2.month, month2.year),
+
+            // Dodane nowe pola
+            month1NightShifts: getMonthNightShifts(schedule, emp.id, month1.month, month1.year),
+            month2NightShifts: getMonthNightShifts(schedule, emp.id, month2.month, month2.year),
+            month1ContactHours: getMonthContacts(schedule, emp.id, month1.month, month1.year),
+            month2ContactHours: getMonthContacts(schedule, emp.id, month2.month, month2.year),
         };
     });
 

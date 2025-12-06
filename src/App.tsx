@@ -383,13 +383,14 @@ function MainLayout() {
               className={clsx(
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
                 currentView === 'schedule'
-                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  ? "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-200 dark:ring-purple-800 shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >
               <Calendar size={16} />
               Grafik
             </button>
+            {/* 2. DASHBOARD */}
             <button
               onClick={() => setCurrentView('dashboard')}
               className={clsx(
@@ -402,18 +403,20 @@ function MainLayout() {
               <BarChart3 size={16} />
               Dashboard
             </button>
+            {/* 3. PORÓWNANIE (przesunięte tutaj) */}
             <button
-              onClick={() => setCurrentView('timeline')}
+              onClick={() => setCurrentView('comparison')}
               className={clsx(
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
-                currentView === 'timeline'
-                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                currentView === 'comparison'
+                  ? "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-200 dark:ring-purple-800 shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >
-              <Clock size={16} />
-              Oś czasu
+              <Users size={16} />
+              Porównanie
             </button>
+            {/* 4. POKRYCIE GODZ (coverage) */}
             <button
               onClick={() => setCurrentView('coverage')}
               className={clsx(
@@ -424,8 +427,9 @@ function MainLayout() {
               )}
             >
               <Clock size={16} />
-              Pokrycie Godz
+              Pokrycie Godzinowe
             </button>
+            {/* 5. POKRYCIE MIESIĘCZNE (monthly) */}
             <button
               onClick={() => setCurrentView('monthly')}
               className={clsx(
@@ -438,6 +442,20 @@ function MainLayout() {
               <TrendingUp size={16} />
               Pokrycie Miesięczne
             </button>
+            {/* 6. POKRYCIE ZMIAN (timeline - zmiana nazwy z Oś czasu) */}
+            <button
+              onClick={() => setCurrentView('timeline')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'timeline'
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <Clock size={16} />
+              Pokrycie Zmian
+            </button>
+            {/* 7. WIDOK PRACOWNIKA */}
             <button
               onClick={() => setCurrentView('employee')}
               className={clsx(
@@ -450,30 +468,8 @@ function MainLayout() {
               <User size={16} />
               Widok pracownika
             </button>
-            <button
-              onClick={() => setCurrentView('comparison')}
-              className={clsx(
-                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
-                currentView === 'comparison'
-                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
-              )}
-            >
-              <Users size={16} />
-              Porównanie
-            </button>
-            <button
-              onClick={() => setCurrentView('config')}
-              className={clsx(
-                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
-                currentView === 'config'
-                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
-              )}
-            >
-              <Settings size={16} />
-              Konfiguracja
-            </button>
+
+            {/* 8. GRAFIK AI */}
             <button
               onClick={() => setCurrentView('ortools')}
               className={clsx(
@@ -485,6 +481,19 @@ function MainLayout() {
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M2 12h20M6 6l12 12M6 18L18 6" /></svg>
               Grafik AI
+            </button>
+            {/* 9. KONFIGURACJA - SERWER (zmiana nazwy) */}
+            <button
+              onClick={() => setCurrentView('config')}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                currentView === 'config'
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <Settings size={16} />
+              Konfiguracja - Serwer
             </button>
           </div>
         </div>

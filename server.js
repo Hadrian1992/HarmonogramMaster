@@ -1190,7 +1190,7 @@ app.post('/api/send-schedules', authenticateCookie, async (req, res) => {
                     from: process.env.SMTP_USER,
                     to: emp.email,
                     subject: `Harmonogram Pracy - ${monthName}`,
-                    text: `Witaj ${emp.name},\n\nW załączniku przesyłamy harmonogram pracy na miesiąc ${monthName}.\n\nPozdrawiamy,\nZespół`,
+                    text: `Witaj ${emp.name},\n\nW załączniku przesyłamy harmonogram pracy na miesiąc ${monthName}.\n\nPozdrawiam`,
                     attachments
                 });
                 sentCount++;
@@ -1292,7 +1292,7 @@ app.post('/api/send-schedules-files', authenticateCookie, upload.any(), async (r
                     from: process.env.SMTP_USER,
                     to: emp.email,
                     subject: `Nowy Grafik Pracy ${monthName}`,
-                    text: `Witaj ${emp.name},\n\nW załączniku przesyłamy harmonogram pracy na miesiąc ${monthName}.\n\nPozdrawiamy,\nZespół`,
+                    text: `Witaj ${emp.name},\n\nW załączniku przesyłamy harmonogram pracy na miesiąc ${monthName}.\n\nPozdrawiam`,
                     attachments: attachments
                 });
                 sentCount++;
