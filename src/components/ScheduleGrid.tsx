@@ -19,6 +19,85 @@ import { getMainPdfBlob } from '../utils/pdfExport';
 import { getEmployeePdfBlob } from '../utils/employeePdfExport';
 import { WorkingHoursReference } from './WorkingHoursReference';
 
+// Helper for parsing shift input
+const parseShiftInput = (val: string, existingShift?: any): { type: ShiftType, start?: number, end?: number, contactHours?: number } => {
+    const value = val.toUpperCase().trim();
+    let type: ShiftType = 'WORK';
+    let start: number | undefined;
+    let end: number | undefined;
+    let contactHours: number | undefined;
+
+    if (/^K\s*\d+[-/]\d+$/.test(value)) {
+        type = 'K';
+        const timePart = value.substring(1).trim();
+        const parts = timePart.split(/[-/]/);
+        if (parts.length === 2) {
+            start = parseInt(parts[0]);
+            end = parseInt(parts[1]);
+            if (!isNaN(start) && !isNaN(end)) {
+                contactHours = (start < end ? end - start : (24 - start) + end);
+            }
+        }
+    } else {
+        const kMatch = value.match(/K\s*(\d+)/);
+        let cleanVal = value;
+
+        if (kMatch) {
+            contactHours = parseInt(kMatch[1]);
+            cleanVal = value.replace(kMatch[0], '').trim();
+        }
+
+        if (cleanVal === '') {
+            if (contactHours !== undefined) {
+                type = 'K';
+            } else if (value === 'K') {
+                type = 'K';
+            } else {
+                type = 'W';
+            }
+        } else if (['L4', 'UW', 'UZ', 'OP', 'W', 'NN', 'UB', 'WYCH', 'UŻ', 'UM', 'USW'].includes(cleanVal)) {
+            type = cleanVal as ShiftType;
+
+            // Auto-assign hours for absence types
+            if (['L4', 'UW', 'UZ', 'UŻ', 'UM', 'USW', 'OP', 'UB'].includes(type)) {
+                if (type === 'UW') {
+                    // UW (vacation) always gets 8-16
+                    start = 8;
+                    end = 16;
+                } else {
+                    // Other absences: inherit from existing shift ONLY if hours are valid numbers
+                    if (existingShift
+                        && existingShift.startHour !== undefined
+                        && existingShift.endHour !== undefined
+                        && !isNaN(existingShift.startHour)
+                        && !isNaN(existingShift.endHour)) {
+                        start = existingShift.startHour;
+                        end = existingShift.endHour;
+                    } else {
+                        // Default to 8-16 if no valid existing hours
+                        start = 8;
+                        end = 16;
+                    }
+                }
+            }
+        } else {
+            const parts = cleanVal.split(/[-/]/);
+            if (parts.length === 2) {
+                start = parseInt(parts[0]);
+                end = parseInt(parts[1]);
+                if (isNaN(start) || isNaN(end)) {
+                    type = 'W';
+                } else {
+                    type = 'WORK';
+                }
+            } else {
+                type = 'W';
+            }
+        }
+    }
+    return { type, start, end, contactHours };
+};
+
 export const ScheduleGrid: React.FC = () => {
     const { schedule, updateShift, setManualContactHours, restoreSchedule, copyDay, pasteDay, copiedDay, templates: weeklyTemplates, saveTemplate, applyTemplate: applyWeeklyTemplate, deleteTemplate, colorSettings } = useScheduleStore();
     const [editingCell, setEditingCell] = useState<{ empId: string, date: string } | null>(null);
@@ -41,7 +120,101 @@ export const ScheduleGrid: React.FC = () => {
     const [pdfTemplate, setPdfTemplate] = useState<'standard' | 'weekly'>('standard');
     const [isPdfMenuOpen, setIsPdfMenuOpen] = useState(false);
 
-    // Replacement Modal State
+    // Selection & Bulk Delete State
+    const [selectionStart, setSelectionStart] = useState<{ empId: string, date: string } | null>(null);
+    const [selectionEnd, setSelectionEnd] = useState<{ empId: string, date: string } | null>(null);
+    const [isSelecting, setIsSelecting] = useState(false);
+    const { bulkUpdateShifts } = useScheduleStore();
+
+    // Helper to check if a cell is selected
+    const isSelected = (empId: string, date: string) => {
+        if (!selectionStart || !selectionEnd) return false;
+
+        const startEmpIndex = schedule.employees.findIndex(e => e.id === selectionStart.empId);
+        const endEmpIndex = schedule.employees.findIndex(e => e.id === selectionEnd.empId);
+        const currEmpIndex = schedule.employees.findIndex(e => e.id === empId);
+
+        const minEmpIndex = Math.min(startEmpIndex, endEmpIndex);
+        const maxEmpIndex = Math.max(startEmpIndex, endEmpIndex);
+
+        if (currEmpIndex < minEmpIndex || currEmpIndex > maxEmpIndex) return false;
+
+        const startDate = selectionStart.date < selectionEnd.date ? selectionStart.date : selectionEnd.date;
+        const endDate = selectionStart.date > selectionEnd.date ? selectionStart.date : selectionEnd.date;
+
+        return date >= startDate && date <= endDate;
+    };
+
+    // Mouse Handlers for Selection
+    const handleMouseDown = (empId: string, date: string) => {
+        setSelectionStart({ empId, date });
+        setSelectionEnd({ empId, date });
+        setIsSelecting(true);
+        setEditingCell(null); // Close any active editor
+    };
+
+    const handleMouseEnter = (empId: string, date: string) => {
+        if (isSelecting) {
+            setSelectionEnd({ empId, date });
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsSelecting(false);
+    };
+
+    // Keyboard Handler for Bulk Delete
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.key === 'Backspace' || e.key === 'Delete') && selectionStart && selectionEnd && !editingCell) {
+                // Calculate selected range
+                const startEmpIndex = schedule.employees.findIndex(e => e.id === selectionStart.empId);
+                const endEmpIndex = schedule.employees.findIndex(e => e.id === selectionEnd.empId);
+                const minEmpIndex = Math.min(startEmpIndex, endEmpIndex);
+                const maxEmpIndex = Math.max(startEmpIndex, endEmpIndex);
+
+                const startDate = selectionStart.date < selectionEnd.date ? selectionStart.date : selectionEnd.date;
+                const endDate = selectionStart.date > selectionEnd.date ? selectionStart.date : selectionEnd.date;
+
+                const updates: any[] = [];
+
+                for (let i = minEmpIndex; i <= maxEmpIndex; i++) {
+                    const emp = schedule.employees[i];
+                    // Iterate days in range
+                    const current = new Date(startDate);
+                    const end = new Date(endDate);
+
+                    while (current <= end) {
+                        const dateStr = format(current, 'yyyy-MM-dd');
+                        updates.push({
+                            employeeId: emp.id,
+                            date: dateStr,
+                            type: '', // Empty type = delete/clear
+                            start: undefined,
+                            end: undefined,
+                            contactHours: undefined
+                        });
+                        current.setDate(current.getDate() + 1);
+                    }
+                }
+
+                if (updates.length > 0) {
+                    if (confirm(`Czy na pewno chcesz usunąć ${updates.length} zmian?`)) {
+                        bulkUpdateShifts(updates);
+                        setSelectionStart(null);
+                        setSelectionEnd(null);
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('mouseup', handleMouseUp); // Global mouse up to catch drag end outside grid
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [selectionStart, selectionEnd, editingCell, schedule.employees, bulkUpdateShifts]);
     const [showReplacementModal, setShowReplacementModal] = useState(false);
     const [replacementCandidates, setReplacementCandidates] = useState<any[]>([]);
     const [loadingReplacement, setLoadingReplacement] = useState(false);
@@ -378,85 +551,12 @@ export const ScheduleGrid: React.FC = () => {
     const saveShift = (val: string) => {
         if (!editingCell) return;
 
-        const value = val.toUpperCase().trim();
-        let type: ShiftType = 'WORK';
-        let start: number | undefined;
-        let end: number | undefined;
-        let contactHours: number | undefined;
-
         // Get existing shift to potentially inherit hours
         const existingShift = schedule.employees
             .find(e => e.id === editingCell.empId)
             ?.shifts[editingCell.date];
 
-        if (/^K\s*\d+[-/]\d+$/.test(value)) {
-            type = 'K';
-            const timePart = value.substring(1).trim();
-            const parts = timePart.split(/[-/]/);
-            if (parts.length === 2) {
-                start = parseInt(parts[0]);
-                end = parseInt(parts[1]);
-                if (!isNaN(start) && !isNaN(end)) {
-                    contactHours = (start < end ? end - start : (24 - start) + end);
-                }
-            }
-        } else {
-            const kMatch = value.match(/K\s*(\d+)/);
-            let cleanVal = value;
-
-            if (kMatch) {
-                contactHours = parseInt(kMatch[1]);
-                cleanVal = value.replace(kMatch[0], '').trim();
-            }
-
-            if (cleanVal === '') {
-                if (contactHours !== undefined) {
-                    type = 'K';
-                } else if (value === 'K') {
-                    type = 'K';
-                } else {
-                    type = 'W';
-                }
-            } else if (['L4', 'UW', 'UZ', 'OP', 'W', 'NN', 'UB', 'WYCH', 'UŻ', 'UM', 'USW'].includes(cleanVal)) {
-                type = cleanVal as ShiftType;
-
-                // Auto-assign hours for absence types
-                if (['L4', 'UW', 'UZ', 'UŻ', 'UM', 'USW', 'OP', 'UB'].includes(type)) {
-                    if (type === 'UW') {
-                        // UW (vacation) always gets 8-16
-                        start = 8;
-                        end = 16;
-                    } else {
-                        // Other absences: inherit from existing shift ONLY if hours are valid numbers
-                        if (existingShift
-                            && existingShift.startHour !== undefined
-                            && existingShift.endHour !== undefined
-                            && !isNaN(existingShift.startHour)
-                            && !isNaN(existingShift.endHour)) {
-                            start = existingShift.startHour;
-                            end = existingShift.endHour;
-                        } else {
-                            // Default to 8-16 if no valid existing hours
-                            start = 8;
-                            end = 16;
-                        }
-                    }
-                }
-            } else {
-                const parts = cleanVal.split(/[-/]/);
-                if (parts.length === 2) {
-                    start = parseInt(parts[0]);
-                    end = parseInt(parts[1]);
-                    if (isNaN(start) || isNaN(end)) {
-                        type = 'W';
-                    } else {
-                        type = 'WORK';
-                    }
-                } else {
-                    type = 'W';
-                }
-            }
-        }
+        const { type, start, end, contactHours } = parseShiftInput(val, existingShift);
 
         updateShift(editingCell.empId, editingCell.date, type, start, end, contactHours);
         setEditingCell(null);
@@ -475,6 +575,52 @@ export const ScheduleGrid: React.FC = () => {
     };
 
     const applyTemplate = (val: string) => {
+        // 1. Bulk Update
+        if (selectionStart && selectionEnd) {
+            const startEmpIndex = schedule.employees.findIndex(e => e.id === selectionStart.empId);
+            const endEmpIndex = schedule.employees.findIndex(e => e.id === selectionEnd.empId);
+            const minEmpIndex = Math.min(startEmpIndex, endEmpIndex);
+            const maxEmpIndex = Math.max(startEmpIndex, endEmpIndex);
+
+            const startDate = selectionStart.date < selectionEnd.date ? selectionStart.date : selectionEnd.date;
+            const endDate = selectionStart.date > selectionEnd.date ? selectionStart.date : selectionEnd.date;
+
+            const updates: any[] = [];
+
+            for (let i = minEmpIndex; i <= maxEmpIndex; i++) {
+                const emp = schedule.employees[i];
+                const current = new Date(startDate);
+                const end = new Date(endDate);
+
+                while (current <= end) {
+                    const dateStr = format(current, 'yyyy-MM-dd');
+                    const existingShift = emp.shifts[dateStr];
+                    const { type, start, end: shiftEnd, contactHours } = parseShiftInput(val, existingShift);
+
+                    updates.push({
+                        employeeId: emp.id,
+                        date: dateStr,
+                        type,
+                        start,
+                        end: shiftEnd,
+                        contactHours
+                    });
+                    current.setDate(current.getDate() + 1);
+                }
+            }
+
+            if (updates.length > 0) {
+                bulkUpdateShifts(updates);
+            }
+
+            // Clear selection and editing state so user sees the result immediately
+            setSelectionStart(null);
+            setSelectionEnd(null);
+            setEditingCell(null);
+            return;
+        }
+
+        // 2. Single Cell Update
         if (!editingCell) return;
         saveShift(val);
     };
@@ -1033,16 +1179,23 @@ export const ScheduleGrid: React.FC = () => {
 
                                                 const customColor = getCustomColor();
 
+                                                const isCellSelected = isSelected(emp.id, dateStr);
+
                                                 return (
                                                     <React.Fragment key={dateStr}>
                                                         <td
+                                                            onMouseDown={() => handleMouseDown(emp.id, dateStr)}
+                                                            onMouseEnter={() => handleMouseEnter(emp.id, dateStr)}
                                                             className={clsx(
-                                                                "px-4 py-3 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 relative",
+                                                                "px-4 py-3 text-center cursor-pointer relative transition-colors duration-150",
                                                                 isWeekend(day) && "bg-red-50/30 dark:bg-red-900/10",
                                                                 !customColor && shift?.type === 'L4' && "bg-orange-100 dark:bg-orange-900/30",
                                                                 !customColor && shift?.type === 'UW' && "bg-green-100 dark:bg-green-900/30",
                                                                 !customColor && shift?.type === 'K' && "bg-purple-100 dark:bg-purple-900/30",
-                                                                isEditing && "p-0"
+                                                                isEditing && "p-0",
+                                                                // Selection Styles
+                                                                isCellSelected && "bg-blue-200 dark:bg-blue-800/50 ring-2 ring-inset ring-blue-500 z-10",
+                                                                !isCellSelected && "hover:bg-gray-50 dark:hover:bg-slate-800"
                                                             )}
                                                             style={{
                                                                 // backgroundColor: customColor || undefined // REMOVED: User wants badge style only

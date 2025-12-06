@@ -82,6 +82,7 @@ interface ScheduleState {
         dateRange: { start: string; end: string };
     };
     updateORToolsConfig: (config: Partial<ScheduleState['ortoolsConfig']>) => void;
+    bulkUpdateShifts: (updates: { employeeId: string, date: string, type: ShiftType, start?: number, end?: number, contactHours?: number }[]) => void;
 }
 
 
@@ -460,7 +461,52 @@ export const useScheduleStore = create<ScheduleState>()(
                     ...state.ortoolsConfig,
                     ...newConfig
                 }
-            })) // <-- Tu koniec updateORToolsConfig (ostatnia funkcja, więc przecinek opcjonalny, ale dobra praktyka)
+            })),
+
+            bulkUpdateShifts: (updates) => set((state) => {
+                const newEmployees = state.schedule.employees.map(emp => {
+                    // Find all updates for this employee
+                    const empUpdates = updates.filter(u => u.employeeId === emp.id);
+                    if (empUpdates.length === 0) return emp;
+
+                    const newShifts = { ...emp.shifts };
+
+                    empUpdates.forEach(update => {
+                        const { date, type, start, end, contactHours } = update;
+
+                        // Calculate hours logic (duplicated from updateShift - could be extracted)
+                        let hours = 0;
+                        if (start !== undefined && end !== undefined) {
+                            hours = (start < end ? end - start : (24 - start) + end);
+                        } else if (['L4', 'UW', 'UZ', 'OP', 'UM', 'UB'].includes(type)) {
+                            hours = 8;
+                        } else if (type === 'UŻ' || type === 'USW') {
+                            hours = (start !== undefined && end !== undefined)
+                                ? (start < end ? end - start : (24 - start) + end)
+                                : 8;
+                        }
+
+                        newShifts[date] = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            date,
+                            type,
+                            startHour: start,
+                            endHour: end,
+                            hours,
+                            contactHours
+                        };
+                    });
+
+                    return { ...emp, shifts: newShifts };
+                });
+
+                return {
+                    schedule: {
+                        ...state.schedule,
+                        employees: newEmployees
+                    }
+                };
+            })
         }),
         {
             name: 'harmonogram-storage',
