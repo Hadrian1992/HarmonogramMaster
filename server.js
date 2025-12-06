@@ -1094,14 +1094,14 @@ app.get('/api/data', authenticateCookie, async (req, res) => {
             include: {
                 shifts: {
                     orderBy: {
-                        date: 'asc' // <--- TO JEST KLUCZ DO SUKCESU! Sortuj zmiany od najstarszej
+                        date: 'asc' // <--- SORTOWANIE (Naprawia błędy z kolejnością zmian)
                     }
                 },
                 preferences: true,
                 monthly_contact_hours: true
             },
             orderBy: {
-                name: 'asc' // Przy okazji posortujmy pracowników alfabetycznie, żeby był porządek
+                name: 'asc'
             }
         });
 
@@ -1118,13 +1118,16 @@ app.get('/api/data', authenticateCookie, async (req, res) => {
         const formattedEmployees = employeesDB.map(emp => {
             const shiftsObject = {};
             emp.shifts.forEach(shift => {
-                const dateKey = shift.date.toISOString().split('T')[0];
+                // Bezpieczne formatowanie daty (bez przesunięcia strefy czasowej)
+                const dateKey = shift.date.toLocaleDateString('en-CA'); 
+
                 shiftsObject[dateKey] = {
                     id: shift.id,
                     date: dateKey,
                     type: shift.type,
-                    startHour: shift.start_hour,
-                    endHour: shift.end_hour,
+                    // KLUCZOWE: Rzutowanie na Number (naprawia błędy walidatora)
+                    startHour: shift.start_hour !== null ? Number(shift.start_hour) : null,
+                    endHour: shift.end_hour !== null ? Number(shift.end_hour) : null,
                     hours: Number(shift.hours),
                     contactHours: Number(shift.contact_hours)
                 };
@@ -1162,7 +1165,6 @@ app.get('/api/data', authenticateCookie, async (req, res) => {
         res.status(500).json({ error: 'Failed to read data from SQL' });
     }
 });
-
 
 app.post('/api/data', authenticateCookie, (req, res) => {
     try {
